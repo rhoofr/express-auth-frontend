@@ -1,11 +1,12 @@
 /**
  * @module hooks/useMessages
- * React Query hooks for message endpoints, with react-hot-toast integration.
+ * React Query hooks for message endpoints.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { request } from '@/lib/api';
 import { useToast } from '@/hooks/useToast';
 import { useQueryErrorToast } from '@/hooks/useQueryErrorToast';
+import { API_ENDPOINTS } from '@/lib/constants';
 import type {
   MessageListResponse,
   MessageResponse,
@@ -14,21 +15,20 @@ import type {
   ApiErrorResponse,
 } from '@/types/api';
 
-const BASE = '/api/v1/messages';
+const BASE = API_ENDPOINTS.MESSAGES;
 
 function getErrorMessage(error: ApiErrorResponse) {
   return error?.error?.message || 'An unknown error occurred';
 }
 
-// List messages (with optional filters)
-export function useListMessages(params?: { type?: string; category?: string }) {
+// Get all messages
+export function useMessages() {
   const query = useQuery<MessageListResponse, ApiErrorResponse>({
-    queryKey: ['messages', params],
+    queryKey: ['messages'],
     queryFn: () =>
       request<MessageListResponse>({
         url: BASE,
         method: 'GET',
-        params,
       }),
   });
   useQueryErrorToast(query.error);
@@ -41,7 +41,7 @@ export function useGetMessageByKey(key: string) {
     queryKey: ['message', 'key', key],
     queryFn: () =>
       request<MessageResponse>({
-        url: `${BASE}/key/${encodeURIComponent(key)}`,
+        url: `${BASE}/key/${key}`,
         method: 'GET',
       }),
     enabled: !!key,
@@ -119,7 +119,7 @@ export function useDeleteMessage() {
         method: 'DELETE',
       }),
     onSuccess: () => {
-      toast.success('Message deleted');
+      toast.success('Message deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['messages'] });
     },
     onError: (error) => {

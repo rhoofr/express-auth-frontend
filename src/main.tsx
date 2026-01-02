@@ -9,6 +9,7 @@ import './index.css';
 import { ThemeProvider } from '@/lib/theme';
 import { ReactQueryProvider } from '@/lib/queryClient';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { TOAST_POSITION, TOAST_DURATION } from '@/lib/constants';
 import App from './App.tsx';
 import { Toaster } from 'react-hot-toast';
 
@@ -18,10 +19,10 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider>
         <App />
         <Toaster
-          position='top-right'
+          position={TOAST_POSITION}
           toastOptions={{
             className: 'bg-background text-foreground border border-border shadow-lg',
-            duration: 3000,
+            duration: TOAST_DURATION,
           }}
         />
       </ThemeProvider>

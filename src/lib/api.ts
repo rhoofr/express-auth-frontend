@@ -6,9 +6,10 @@
 import axios from 'axios';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import type { ApiErrorResponse } from '@/types/api';
+import { API_BASE_URL, PUBLIC_ENDPOINTS } from '@/lib/constants';
 
 export const api = axios.create({
-  baseURL: 'http://localhost:5004',
+  baseURL: API_BASE_URL,
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });
@@ -61,8 +62,11 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Check if this is a 401 error and we haven't already tried to refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Don't try to refresh on login/register/public endpoints
+    const isPublicEndpoint = PUBLIC_ENDPOINTS.some((endpoint) => originalRequest.url?.includes(endpoint));
+
+    // Check if this is a 401 error and we should attempt refresh
+    if (error.response?.status === 401 && !originalRequest._retry && !isPublicEndpoint) {
       // Mark this request as retried to prevent infinite loops
       originalRequest._retry = true;
 

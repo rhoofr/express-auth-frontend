@@ -7,6 +7,7 @@ import { request } from '@/lib/api';
 import { useToast } from '@/hooks/useToast';
 import { useQueryErrorToast } from '@/hooks/useQueryErrorToast';
 import { useAuthStore } from '@/store/auth';
+import { API_ENDPOINTS } from '@/lib/constants';
 import type {
   RegisterRequest,
   LoginRequest,
@@ -22,7 +23,7 @@ import type {
   SessionsResponse,
 } from '@/types/api';
 
-const BASE = '/api/v1/auth';
+const BASE = API_ENDPOINTS.AUTH;
 
 function getErrorMessage(error: ApiErrorResponse) {
   return error?.error?.message || 'An unknown error occurred';
@@ -51,7 +52,6 @@ export function useRegister() {
 export function useLogin() {
   const toast = useToast();
   const setUser = useAuthStore((state) => state.setUser);
-
   return useMutation<LoginSuccessResponse | TwoFactorRequiredResponse, ApiErrorResponse, LoginRequest>({
     mutationFn: (data) =>
       request<LoginSuccessResponse | TwoFactorRequiredResponse>({
@@ -59,17 +59,13 @@ export function useLogin() {
         method: 'POST',
         data,
       }),
-    onSuccess: (data) => {
-      toast.success(data.message);
-
-      // Check if this is a full login success (not 2FA required)
-      // LoginSuccessResponse has 'data' with full user profile
-      // TwoFactorRequiredResponse has 'data' with only 'userId'
-      if ('data' in data && data.data && 'email' in data.data) {
-        // Full login success - store user
-        setUser(data.data);
+    onSuccess: (response) => {
+      // Check if this is a full login success (has email field in data)
+      if ('data' in response && response.data && 'email' in response.data) {
+        // Full login success - update store
+        setUser(response.data);
       }
-      // If 2FA required, we don't set user yet (wait for confirm-2fa)
+      // If it's 2FA required, don't update store yet - will be handled by confirm2fa
     },
     onError: (error) => {
       toast.error(getErrorMessage(error));
@@ -81,7 +77,6 @@ export function useLogin() {
 export function useConfirm2fa() {
   const toast = useToast();
   const setUser = useAuthStore((state) => state.setUser);
-
   return useMutation<LoginSuccessResponse, ApiErrorResponse, ConfirmTwoFactorRequest>({
     mutationFn: (data) =>
       request<LoginSuccessResponse>({
@@ -90,10 +85,9 @@ export function useConfirm2fa() {
         data,
       }),
     onSuccess: (data) => {
-      toast.success(data.message);
-      // After successful 2FA, store user
       if (data.data) {
         setUser(data.data);
+        toast.success(data.message);
       }
     },
     onError: (error) => {
@@ -104,9 +98,7 @@ export function useConfirm2fa() {
 
 // Refresh token
 export function useRefreshToken() {
-  const toast = useToast();
   const setUser = useAuthStore((state) => state.setUser);
-
   return useMutation<LoginSuccessResponse, ApiErrorResponse, void>({
     mutationFn: () =>
       request<LoginSuccessResponse>({
@@ -114,15 +106,9 @@ export function useRefreshToken() {
         method: 'POST',
       }),
     onSuccess: (data) => {
-      // Don't show success toast for automatic refreshes (noisy)
-      // Update user data in case anything changed
       if (data.data) {
         setUser(data.data);
       }
-    },
-    onError: (error) => {
-      // Only show error toast if it's not an automatic refresh
-      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -131,7 +117,6 @@ export function useRefreshToken() {
 export function useLogout() {
   const toast = useToast();
   const clearUser = useAuthStore((state) => state.clearUser);
-
   return useMutation<{ success: true; message: string; requestId?: string }, ApiErrorResponse, void>({
     mutationFn: () =>
       request<{ success: true; message: string; requestId?: string }>({
@@ -139,8 +124,8 @@ export function useLogout() {
         method: 'POST',
       }),
     onSuccess: (data) => {
+      clearUser();
       toast.success(data.message);
-      clearUser(); // Clear user from store
     },
     onError: (error) => {
       toast.error(getErrorMessage(error));
@@ -152,7 +137,6 @@ export function useLogout() {
 export function useLogoutAll() {
   const toast = useToast();
   const clearUser = useAuthStore((state) => state.clearUser);
-
   return useMutation<{ success: true; message: string; requestId?: string }, ApiErrorResponse, void>({
     mutationFn: () =>
       request<{ success: true; message: string; requestId?: string }>({
@@ -160,8 +144,8 @@ export function useLogoutAll() {
         method: 'POST',
       }),
     onSuccess: (data) => {
+      clearUser();
       toast.success(data.message);
-      clearUser(); // Clear user from store
     },
     onError: (error) => {
       toast.error(getErrorMessage(error));
@@ -172,7 +156,7 @@ export function useLogoutAll() {
 // List sessions (query)
 export function useSessions() {
   const query = useQuery<SessionsResponse, ApiErrorResponse>({
-    queryKey: ['auth', 'sessions'],
+    queryKey: ['sessions'],
     queryFn: () =>
       request<SessionsResponse>({
         url: `${BASE}/sessions`,
@@ -205,12 +189,12 @@ export function useRequestPasswordReset() {
 // Validate reset token (query)
 export function useValidateResetToken(token: string) {
   const query = useQuery<ValidateResetTokenResponse, ApiErrorResponse>({
-    queryKey: ['auth', 'validate-reset-token', token],
+    queryKey: ['validate-reset-token', token],
     queryFn: () =>
       request<ValidateResetTokenResponse>({
         url: `${BASE}/validate-reset-token`,
-        method: 'GET',
-        params: { token },
+        method: 'POST',
+        data: { token },
       }),
     enabled: !!token,
   });
@@ -281,8 +265,9 @@ export function useResendConfirmation() {
 
 // Confirm email (query)
 export function useConfirmEmail(token: string) {
+  const toast = useToast();
   const query = useQuery<{ success: true; message: string; requestId?: string }, ApiErrorResponse>({
-    queryKey: ['auth', 'confirm-email', token],
+    queryKey: ['confirm-email', token],
     queryFn: () =>
       request<{ success: true; message: string; requestId?: string }>({
         url: `${BASE}/confirm-email`,
@@ -292,6 +277,9 @@ export function useConfirmEmail(token: string) {
     enabled: !!token,
   });
   useQueryErrorToast(query.error);
+  if (query.isSuccess && query.data) {
+    toast.success(query.data.message);
+  }
   return query;
 }
 

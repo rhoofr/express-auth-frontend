@@ -59,6 +59,7 @@
 - Don't generate code that gives TypeScript errors under the current strict settings or linting errors.
 - When you import a type make sure it does not give the error "'SomeType' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled."
 - When providing "Explanation of Changes" on changes given in chat, be concise and only mention the most relevant details.
+- DO NOT change styling or layout when making code changes unless that is part of the change.
 
 ## Integration Points
 

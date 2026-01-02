@@ -4,7 +4,7 @@
  */
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useListMessages } from '@/hooks/useMessages';
+import { useMessages } from '@/hooks/useMessages';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 import { Plus, Loader2 } from 'lucide-react';
@@ -15,7 +15,7 @@ export default function MessagesPage() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
-  const { data, isLoading } = useListMessages();
+  const { data, isLoading } = useMessages();
 
   // Local state for search query
   const [searchQuery, setSearchQuery] = useState('');
