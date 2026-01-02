@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
+import { messageTypes, messageCategories } from '@/lib/constants';
 
 const messageSchema = z.object({
   key: z.string().min(1, 'Key is required'),
@@ -138,13 +140,18 @@ export default function EditMessagePage() {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel htmlFor='type'>Type</FieldLabel>
-                    <Input
-                      {...field}
-                      id='type'
-                      placeholder='success, error, etc.'
-                      aria-invalid={fieldState.invalid}
-                      disabled={updateMessage.isPending}
-                    />
+                    <Select onValueChange={field.onChange} value={field.value} disabled={updateMessage.isPending}>
+                      <SelectTrigger id='type' aria-invalid={fieldState.invalid}>
+                        <SelectValue placeholder='Select a type' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {messageTypes.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
                 )}
@@ -156,13 +163,18 @@ export default function EditMessagePage() {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel htmlFor='category'>Category</FieldLabel>
-                    <Input
-                      {...field}
-                      id='category'
-                      placeholder='auth, user, etc.'
-                      aria-invalid={fieldState.invalid}
-                      disabled={updateMessage.isPending}
-                    />
+                    <Select onValueChange={field.onChange} value={field.value} disabled={updateMessage.isPending}>
+                      <SelectTrigger id='category' aria-invalid={fieldState.invalid}>
+                        <SelectValue placeholder='Select a category' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {messageCategories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
                 )}

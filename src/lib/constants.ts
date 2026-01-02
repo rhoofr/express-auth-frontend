@@ -62,3 +62,6 @@ export const ROUTES = {
   MESSAGES_EDIT: '/messages/:id/edit',
   FORBIDDEN: '/forbidden',
 } as const;
+
+export const messageTypes = ['error', 'securityLog', 'systemLog', 'authLog', 'success', 'validationLog'] as const;
+export const messageCategories = ['security', 'auth', 'user', 'validation', 'system'] as const;
