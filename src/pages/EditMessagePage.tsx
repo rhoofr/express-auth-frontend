@@ -92,11 +92,6 @@ export default function EditMessagePage() {
 
   return (
     <div className='mx-auto max-w-2xl space-y-6 px-4'>
-      {/* <Button variant='outline' onClick={() => navigate(-1)}>
-        <ArrowLeft className='size-4 mr-2' />
-        Back
-      </Button> */}
-
       <Card className='py-4'>
         <CardHeader>
           <div className='flex items-center justify-between'>
@@ -140,7 +135,15 @@ export default function EditMessagePage() {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel htmlFor='type'>Type</FieldLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={updateMessage.isPending}>
+                    <Select
+                      onValueChange={(value) => {
+                        // Only update if value is not empty
+                        if (value) {
+                          field.onChange(value);
+                        }
+                      }}
+                      value={field.value}
+                      disabled={updateMessage.isPending}>
                       <SelectTrigger id='type' aria-invalid={fieldState.invalid}>
                         <SelectValue placeholder='Select a type' />
                       </SelectTrigger>
@@ -163,7 +166,15 @@ export default function EditMessagePage() {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel htmlFor='category'>Category</FieldLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={updateMessage.isPending}>
+                    <Select
+                      onValueChange={(value) => {
+                        // Only update if value is not empty
+                        if (value) {
+                          field.onChange(value);
+                        }
+                      }}
+                      value={field.value}
+                      disabled={updateMessage.isPending}>
                       <SelectTrigger id='category' aria-invalid={fieldState.invalid}>
                         <SelectValue placeholder='Select a category' />
                       </SelectTrigger>
