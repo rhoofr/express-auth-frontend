@@ -10,6 +10,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AdminRoute } from '@/components/AdminRoute';
 import HomePage from '@/pages/HomePage';
 import LoginPage from '@/pages/LoginPage';
+import RegisterPage from '@/pages/RegisterPage';
 import ForbiddenPage from '@/pages/ForbiddenPage';
 import MessagesPage from '@/pages/MessagesPage';
 import MessageDetailPage from '@/pages/MessageDetailPage';
@@ -33,6 +34,7 @@ function App() {
           {/* Public Routes */}
           <Route path='/' element={<HomePage />} />
           <Route path='/login' element={<LoginPage />} />
+          <Route path='/register' element={<RegisterPage />} />
           <Route path='/forbidden' element={<ForbiddenPage />} />
 
           {/* Protected Routes - Require Authentication */}

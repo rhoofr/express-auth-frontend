@@ -123,9 +123,14 @@ export function Navbar({ routes, theme, setTheme }: NavbarProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <Button variant='outline' size='sm' onClick={() => navigate('/login')}>
-            Login
-          </Button>
+          <div className='flex items-center gap-2'>
+            <Button variant='outline' size='sm' onClick={() => navigate('/login')}>
+              Login
+            </Button>
+            <Button variant='default' size='sm' onClick={() => navigate('/register')}>
+              Sign Up
+            </Button>
+          </div>
         )}
       </div>
     </nav>
