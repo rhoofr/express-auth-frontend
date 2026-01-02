@@ -38,7 +38,7 @@ export default function MessageDetailPage() {
 
   if (!message) {
     return (
-      <div className='space-y-6'>
+      <div className='mx-auto max-w-4xl space-y-6 px-4'>
         <Button variant='outline' onClick={() => navigate(-1)}>
           <ArrowLeft className='size-4 mr-2' />
           Back
@@ -54,7 +54,7 @@ export default function MessageDetailPage() {
   }
 
   return (
-    <div className='space-y-6 max-w-4xl'>
+    <div className='mx-auto max-w-4xl space-y-6 px-4'>
       {/* Header with Back Button */}
       <div className='flex items-center justify-between'>
         <Button variant='outline' onClick={() => navigate(-1)}>
@@ -77,7 +77,7 @@ export default function MessageDetailPage() {
       </div>
 
       {/* Message Details Card */}
-      <Card>
+      <Card className='gap-3'>
         <CardHeader>
           <div className='flex items-start justify-between gap-4'>
             <div className='space-y-1'>
@@ -88,73 +88,81 @@ export default function MessageDetailPage() {
         </CardHeader>
 
         <CardContent className='space-y-6'>
-          {/* Key Field */}
-          <div className='space-y-2'>
-            <div className='flex items-center gap-2'>
-              <span className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>Key</span>
-            </div>
-            <p className='text-base font-medium'>{message.key}</p>
-          </div>
-
-          {/* Type Field */}
-          <div className='space-y-2'>
-            <div className='flex items-center gap-2'>
-              <span className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>Type</span>
-            </div>
-            <Badge variant='outline' className='text-sm'>
-              {message.type}
-            </Badge>
-          </div>
-
-          {/* Category Field */}
-          <div className='space-y-2'>
-            <div className='flex items-center gap-2'>
-              <span className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>Category</span>
-            </div>
-            <Badge variant='secondary' className='text-sm'>
-              {message.category}
-            </Badge>
-          </div>
-
-          {/* Value Field */}
-          <div className='space-y-2'>
-            <div className='flex items-center gap-2'>
-              <span className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>Value</span>
-            </div>
-            <p className='text-base leading-relaxed'>{message.value}</p>
-          </div>
-
-          {/* Description Field (Optional) */}
-          {message.description && (
+          <div className='pt-4 border-t border-border space-y-6'>
+            {/* Key Field */}
             <div className='space-y-2'>
               <div className='flex items-center gap-2'>
-                <span className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>Description</span>
+                <span className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>Key</span>
               </div>
-              <p className='text-base text-muted-foreground leading-relaxed italic'>{message.description}</p>
+              <p className='text-base font-medium'>{message.key}</p>
             </div>
-          )}
 
-          {/* Metadata */}
-          {(message.created_at || message.updated_at) && (
-            <div className='pt-4 border-t border-border space-y-3'>
-              {message.created_at && (
-                <div className='flex items-start gap-3'>
-                  <span className='text-xs font-semibold text-muted-foreground uppercase tracking-wide min-w-25'>
-                    Created
-                  </span>
-                  <span className='text-sm text-muted-foreground'>{new Date(message.created_at).toLocaleString()}</span>
-                </div>
-              )}
-              {message.updated_at && (
-                <div className='flex items-start gap-3'>
-                  <span className='text-xs font-semibold text-muted-foreground uppercase tracking-wide min-w-25'>
-                    Last Updated
-                  </span>
-                  <span className='text-sm text-muted-foreground'>{new Date(message.updated_at).toLocaleString()}</span>
-                </div>
-              )}
+            {/* Type Field */}
+            <div className='space-y-2'>
+              <div className='flex items-center gap-2'>
+                <span className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>Type</span>
+              </div>
+              <Badge variant='outline' className='text-sm'>
+                {message.type}
+              </Badge>
             </div>
-          )}
+
+            {/* Category Field */}
+            <div className='space-y-2'>
+              <div className='flex items-center gap-2'>
+                <span className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>Category</span>
+              </div>
+              <Badge variant='secondary' className='text-sm'>
+                {message.category}
+              </Badge>
+            </div>
+
+            {/* Value Field */}
+            <div className='space-y-2'>
+              <div className='flex items-center gap-2'>
+                <span className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>Value</span>
+              </div>
+              <p className='text-base leading-relaxed'>{message.value}</p>
+            </div>
+
+            {/* Description Field (Optional) */}
+            {message.description && (
+              <div className='space-y-2'>
+                <div className='flex items-center gap-2'>
+                  <span className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>
+                    Description
+                  </span>
+                </div>
+                <p className='text-base text-muted-foreground leading-relaxed italic'>{message.description}</p>
+              </div>
+            )}
+
+            {/* Metadata */}
+            {(message.created_at || message.updated_at) && (
+              <div className='pt-4 border-t border-border space-y-3'>
+                {message.created_at && (
+                  <div className='flex items-start gap-3'>
+                    <span className='text-xs font-semibold text-muted-foreground uppercase tracking-wide min-w-25'>
+                      Created
+                    </span>
+                    <span className='text-sm text-muted-foreground'>
+                      {new Date(message.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+                {message.updated_at && (
+                  <div className='flex items-start gap-3'>
+                    <span className='text-xs font-semibold text-muted-foreground uppercase tracking-wide min-w-25'>
+                      Last Updated
+                    </span>
+                    <span className='text-sm text-muted-foreground'>
+                      {new Date(message.updated_at).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

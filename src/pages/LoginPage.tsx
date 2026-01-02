@@ -11,8 +11,10 @@ import * as z from 'zod';
 import { useLogin, useConfirm2fa } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Loader2 } from 'lucide-react';
 import type { TwoFactorRequiredResponse } from '@/types/api';
 
 // Login form schema
@@ -111,40 +113,127 @@ export default function LoginPage() {
     );
   };
 
+  // Show loading state
+  if (loginMutation.isPending && !requires2FA) {
+    return (
+      <div className='flex items-center justify-center min-h-[calc(100vh-4rem)]'>
+        <Loader2 className='size-8 animate-spin text-primary' />
+      </div>
+    );
+  }
+
   // Show 2FA form if required
   if (requires2FA) {
     return (
-      <div className='min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4'>
-        <div className='max-w-md w-full space-y-8'>
-          <div>
-            <h2 className='mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white'>
-              Two-Factor Authentication
-            </h2>
-            <p className='mt-2 text-center text-sm text-gray-600 dark:text-gray-400'>
-              Enter the verification code sent to your email
-            </p>
-          </div>
-          <form className='mt-8 space-y-6' onSubmit={twoFactorForm.handleSubmit(handleConfirm2FA)}>
+      <div className='mx-auto max-w-lg space-y-6 px-4'>
+        <Card>
+          <CardHeader>
+            <CardTitle className='text-2xl'>Two-Factor Authentication</CardTitle>
+            <CardDescription>Enter the verification code sent to your email</CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            <form className='space-y-6' onSubmit={twoFactorForm.handleSubmit(handleConfirm2FA)}>
+              <FieldGroup>
+                <Field data-invalid={!!twoFactorForm.formState.errors.code}>
+                  <FieldLabel htmlFor='2fa-code'>Verification Code</FieldLabel>
+                  <Input
+                    {...twoFactorForm.register('code')}
+                    id='2fa-code'
+                    type='text'
+                    inputMode='numeric'
+                    pattern='[0-9]*'
+                    placeholder='Enter 6-digit code'
+                    aria-invalid={!!twoFactorForm.formState.errors.code}
+                    disabled={confirm2faMutation.isPending}
+                    autoComplete='one-time-code'
+                  />
+                  {twoFactorForm.formState.errors.code && <FieldError errors={[twoFactorForm.formState.errors.code]} />}
+                </Field>
+              </FieldGroup>
+
+              <div className='space-y-3'>
+                <Button
+                  type='submit'
+                  className='w-full'
+                  disabled={confirm2faMutation.isPending || !twoFactorForm.formState.isValid}>
+                  {confirm2faMutation.isPending ? (
+                    <>
+                      <Loader2 className='size-4 mr-2 animate-spin' />
+                      Verifying...
+                    </>
+                  ) : (
+                    'Verify Code'
+                  )}
+                </Button>
+
+                <div className='text-center'>
+                  <button
+                    type='button'
+                    className='text-sm text-primary hover:underline'
+                    onClick={() => {
+                      setRequires2FA(false);
+                      setUserId(null);
+                      twoFactorForm.reset();
+                    }}>
+                    Back to login
+                  </button>
+                </div>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show login form
+  return (
+    <div className='mx-auto max-w-lg space-y-6 px-4'>
+      <Card>
+        <CardHeader>
+          <CardTitle className='text-2xl'>Sign in to your account</CardTitle>
+          <CardDescription>Enter your credentials to access your account</CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <form className='space-y-6' onSubmit={loginForm.handleSubmit(handleLogin)}>
             <FieldGroup>
               <Controller
-                name='code'
-                control={twoFactorForm.control}
+                name='email'
+                control={loginForm.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor='2fa-code'>Verification Code</FieldLabel>
+                    <FieldLabel htmlFor='login-email'>Email address</FieldLabel>
                     <Input
                       {...field}
-                      id='2fa-code'
-                      type='text'
-                      inputMode='numeric'
-                      pattern='[0-9]*'
-                      maxLength={6}
-                      placeholder='Enter 6-digit code'
+                      id='login-email'
+                      type='email'
+                      placeholder='Enter your email'
                       aria-invalid={fieldState.invalid}
-                      disabled={confirm2faMutation.isPending}
-                      autoComplete='one-time-code'
+                      disabled={loginMutation.isPending}
+                      autoComplete='email'
                     />
-                    <FieldDescription>Enter the 6-digit code sent to your email</FieldDescription>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name='password'
+                control={loginForm.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor='login-password'>Password</FieldLabel>
+                    <Input
+                      {...field}
+                      id='login-password'
+                      type='password'
+                      placeholder='Enter your password'
+                      aria-invalid={fieldState.invalid}
+                      disabled={loginMutation.isPending}
+                      autoComplete='current-password'
+                    />
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
                 )}
@@ -155,97 +244,29 @@ export default function LoginPage() {
               <Button
                 type='submit'
                 className='w-full'
-                disabled={confirm2faMutation.isPending || !twoFactorForm.formState.isValid}>
-                {confirm2faMutation.isPending ? 'Verifying...' : 'Verify Code'}
+                disabled={loginMutation.isPending || !loginForm.formState.isValid}>
+                {loginMutation.isPending ? (
+                  <>
+                    <Loader2 className='size-4 mr-2 animate-spin' />
+                    Signing in...
+                  </>
+                ) : (
+                  'Sign in'
+                )}
               </Button>
 
-              <div className='text-center'>
-                <button
-                  type='button'
-                  className='text-sm text-primary hover:underline'
-                  onClick={() => {
-                    setRequires2FA(false);
-                    setUserId(null);
-                    twoFactorForm.reset();
-                  }}>
-                  Back to login
-                </button>
+              <div className='flex items-center justify-between text-sm'>
+                <a href='/forgot-password' className='text-primary hover:underline'>
+                  Forgot password?
+                </a>
+                <a href='/register' className='text-primary hover:underline'>
+                  Create account
+                </a>
               </div>
             </div>
           </form>
-        </div>
-      </div>
-    );
-  }
-
-  // Show login form
-  return (
-    <div className='min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4'>
-      <div className='max-w-md w-full space-y-8'>
-        <div>
-          <h2 className='mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white'>
-            Sign in to your account
-          </h2>
-        </div>
-        <form className='mt-8 space-y-6' onSubmit={loginForm.handleSubmit(handleLogin)}>
-          <FieldGroup>
-            <Controller
-              name='email'
-              control={loginForm.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor='login-email'>Email address</FieldLabel>
-                  <Input
-                    {...field}
-                    id='login-email'
-                    type='email'
-                    placeholder='Enter your email'
-                    aria-invalid={fieldState.invalid}
-                    disabled={loginMutation.isPending}
-                    autoComplete='email'
-                  />
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
-
-            <Controller
-              name='password'
-              control={loginForm.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor='login-password'>Password</FieldLabel>
-                  <Input
-                    {...field}
-                    id='login-password'
-                    type='password'
-                    placeholder='Enter your password'
-                    aria-invalid={fieldState.invalid}
-                    disabled={loginMutation.isPending}
-                    autoComplete='current-password'
-                  />
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
-          </FieldGroup>
-
-          <div className='space-y-4'>
-            <Button type='submit' className='w-full' disabled={loginMutation.isPending || !loginForm.formState.isValid}>
-              {loginMutation.isPending ? 'Signing in...' : 'Sign in'}
-            </Button>
-
-            <div className='flex items-center justify-between text-sm'>
-              <a href='/forgot-password' className='text-primary hover:underline'>
-                Forgot your password?
-              </a>
-              <a href='/register' className='text-primary hover:underline'>
-                Create account
-              </a>
-            </div>
-          </div>
-        </form>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -73,7 +73,7 @@ export default function EditMessagePage() {
 
   if (!data?.data) {
     return (
-      <div className='space-y-6 max-w-2xl'>
+      <div className='mx-auto max-w-2xl space-y-6 px-4'>
         <Button variant='outline' onClick={() => navigate(-1)}>
           <ArrowLeft className='size-4 mr-2' />
           Back
@@ -86,7 +86,7 @@ export default function EditMessagePage() {
   }
 
   return (
-    <div className='space-y-6 max-w-2xl'>
+    <div className='mx-auto max-w-2xl space-y-6 px-4'>
       <Button variant='outline' onClick={() => navigate(-1)}>
         <ArrowLeft className='size-4 mr-2' />
         Back

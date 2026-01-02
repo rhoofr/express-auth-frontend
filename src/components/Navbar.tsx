@@ -3,21 +3,21 @@
  * Application navbar with navigation, theme switcher, and auth controls.
  */
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/auth';
+import { useLogout, useLogoutAll } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { Sun, Moon, User, LogOut } from 'lucide-react';
-import { useAuthStore } from '@/store/auth';
-import { useLogout } from '@/hooks/useAuth';
+import { Sun, Moon, User, LogOut, Settings } from 'lucide-react';
 
 interface NavbarProps {
-  routes: { path: string; label: string }[];
+  routes: { path: string; label: string; protected: boolean }[];
   theme?: 'light' | 'dark';
   setTheme?: (theme: 'light' | 'dark') => void;
 }
@@ -28,6 +28,7 @@ export function Navbar({ routes, theme, setTheme }: NavbarProps) {
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const logoutMutation = useLogout();
+  const logoutAllMutation = useLogoutAll();
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
@@ -37,19 +38,34 @@ export function Navbar({ routes, theme, setTheme }: NavbarProps) {
     });
   };
 
+  const handleLogoutAll = () => {
+    logoutAllMutation.mutate(undefined, {
+      onSuccess: () => {
+        navigate('/login');
+      },
+    });
+  };
+
+  // Filter routes based on authentication status
+  const visibleRoutes = routes.filter((route) => {
+    // Show public routes to everyone
+    if (!route.protected) return true;
+    // Show protected routes only to authenticated users
+    return isAuthenticated;
+  });
+
   return (
     <nav className='bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-2 flex items-center justify-between'>
       <div className='flex items-center gap-6'>
         <p className='font-bold text-lg text-primary'>Express Auth Frontend</p>
         <ul className='flex gap-4'>
-          {routes.map((route) => (
+          {visibleRoutes.map((route) => (
             <li key={route.path}>
               <Link
                 to={route.path}
-                className={cn(
-                  'text-gray-700 dark:text-gray-200 hover:text-primary transition-colors',
-                  location.pathname === route.path && 'font-semibold underline underline-offset-4'
-                )}>
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  location.pathname === route.path ? 'text-primary' : 'text-gray-600 dark:text-gray-400'
+                }`}>
                 {route.label}
               </Link>
             </li>
@@ -62,17 +78,19 @@ export function Navbar({ routes, theme, setTheme }: NavbarProps) {
         {theme && setTheme && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant='outline'
-                size='sm'
-                aria-label={`Switch theme (current: ${theme})`}
-                title={`Current theme: ${theme}`}>
-                {theme === 'dark' ? <Moon className='size-4' /> : <Sun className='size-4' />}
+              <Button variant='ghost' size='icon'>
+                {theme === 'light' ? <Sun className='size-5' /> : <Moon className='size-5' />}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setTheme('light')}>Light</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme('dark')}>Dark</DropdownMenuItem>
+            <DropdownMenuContent align='end'>
+              <DropdownMenuItem onClick={() => setTheme('light')}>
+                <Sun className='size-4 mr-2' />
+                Light
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme('dark')}>
+                <Moon className='size-4 mr-2' />
+                Dark
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -81,23 +99,26 @@ export function Navbar({ routes, theme, setTheme }: NavbarProps) {
         {isAuthenticated && user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant='outline' size='sm' className='flex items-center gap-2'>
-                <User className='size-4' />
-                <span className='hidden sm:inline'>{user.fullName}</span>
+              <Button variant='outline' size='sm'>
+                <User className='size-4 mr-2' />
+                {user.fullName}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align='end'>
-              <div className='px-2 py-1.5 text-sm'>
-                <div className='font-medium'>{user.fullName}</div>
-                <div className='text-muted-foreground text-xs'>{user.email}</div>
-              </div>
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/profile')}>Profile</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/settings')}>Settings</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <Settings className='size-4 mr-2' />
+                Profile
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} disabled={logoutMutation.isPending}>
                 <LogOut className='size-4 mr-2' />
                 {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogoutAll} disabled={logoutAllMutation.isPending}>
+                <LogOut className='size-4 mr-2' />
+                {logoutAllMutation.isPending ? 'Logging out all...' : 'Logout All Devices'}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

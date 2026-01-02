@@ -15,10 +15,12 @@ import MessagesPage from '@/pages/MessagesPage';
 import MessageDetailPage from '@/pages/MessageDetailPage';
 import CreateMessagePage from '@/pages/CreateMessagePage';
 import EditMessagePage from '@/pages/EditMessagePage';
+import ProfilePage from '@/pages/ProfilePage';
 
 const routes = [
-  { path: '/', label: 'Home' },
-  { path: '/messages', label: 'Messages' },
+  { path: '/', label: 'Home', protected: false },
+  { path: '/messages', label: 'Messages', protected: true },
+  { path: '/profile', label: 'Profile', protected: true },
 ];
 
 function App() {
@@ -34,6 +36,14 @@ function App() {
           <Route path='/forbidden' element={<ForbiddenPage />} />
 
           {/* Protected Routes - Require Authentication */}
+          <Route
+            path='/profile'
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path='/messages'
             element={
