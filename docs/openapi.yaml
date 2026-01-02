@@ -1,0 +1,944 @@
+openapi: 3.0.0
+info:
+  title: express-auth-typescript API
+  version: 1.0.0
+  description: |
+    Manual OpenAPI specification for the express-auth-typescript demo.
+    Keep this file in sync with Zod validation rules in src/schemas/.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: http://localhost:5004
+security:
+  - cookieAuth: []
+tags:
+  - name: System
+    description: System-level endpoints (health, metrics)
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      tags: [System]
+      description: Simple health/status endpoint returning basic environment and timestamp. Public endpoint.
+      responses:
+        '200':
+          description: Server healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+              example:
+                success: true
+                message: 'Server is running'
+                timestamp: '2025-01-01T12:00:00.000Z'
+                environment: 'development'
+        '400':
+          $ref: '#/components/responses/Error'
+  /metrics:
+    get:
+      operationId: getMetrics
+      summary: Metrics snapshot (non-production only)
+      tags: [System]
+      description: Returns a snapshot of internal metrics. This endpoint is registered only in non-production environments.
+      responses:
+        '200':
+          description: Metrics snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+              example:
+                success: true
+                message: 'Metrics snapshot'
+                timestamp: '2025-01-01T12:00:00.000Z'
+                data:
+                  requests:
+                    total: 1234
+                    lastMinute: 5
+                  uptimeSeconds: 3600
+                  memory:
+                    rss: 12345678
+                    heapUsed: 5678901
+        '400':
+          $ref: '#/components/responses/Error'
+        '500':
+          description: Failed to read metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/register:
+    post:
+      operationId: registerUser
+      summary: Register a new user
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: user@example.com
+              password: P@ssw0rd!
+              fullName: Jane Doe
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+              example:
+                success: true
+                message: 'User registered. Confirmation email sent.'
+                requestId: 'req-123'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/confirm-email:
+    get:
+      operationId: confirmEmail
+      summary: Confirm email address using token
+      tags: [Auth]
+      parameters:
+        - in: query
+          name: token
+          required: true
+          schema:
+            type: string
+            description: Confirmation token (hex, min length 32)
+      responses:
+        '200':
+          description: Email confirmed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+              example:
+                success: true
+                message: 'Email confirmed'
+                requestId: 'req-124'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/Error'
+        '410':
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/resend-confirmation:
+    post:
+      operationId: resendConfirmation
+      summary: Resend confirmation email
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendConfirmationRequest'
+            example:
+              email: user@example.com
+      responses:
+        '200':
+          description: Email resent (or generic success)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+              example:
+                success: true
+                message: 'If this email exists, a confirmation link was sent.'
+                requestId: 'req-125'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/login:
+    post:
+      operationId: loginUser
+      summary: Authenticate user and issue tokens (cookies)
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: user@example.com
+              password: P@ssw0rd!
+      responses:
+        '200':
+          description: Login successful OR two-factor required
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/LoginSuccessResponse'
+                  - $ref: '#/components/schemas/TwoFactorRequiredResponse'
+              examples:
+                login-success:
+                  summary: Login success response
+                  value:
+                    success: true
+                    data:
+                      id: 'user-123'
+                      email: user@example.com
+                      fullName: Jane Doe
+                      role: user
+                      isEmailConfirmed: true
+                      twoFactorEnabled: false
+                    message: 'Login successful'
+                    requestId: 'req-126'
+                two-factor:
+                  summary: Two-factor required response
+                  value:
+                    success: true
+                    message: 'Two-factor authentication required'
+                    data:
+                      userId: '550e8400-e29b-41d4-a716-446655440000'
+                    requestId: 'req-127'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/confirm-2fa:
+    post:
+      operationId: confirm2fa
+      summary: Confirm two-factor code and issue tokens
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmTwoFactorRequest'
+            example:
+              userId: '550e8400-e29b-41d4-a716-446655440000'
+              code: '123456'
+      responses:
+        '200':
+          description: 2FA verified, tokens set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccessResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Refresh access token using refresh token cookie
+      tags: [Auth]
+      responses:
+        '200':
+          description: Token refresh successful (sets new cookies)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccessResponse'
+        '401':
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/logout:
+    post:
+      operationId: logoutSession
+      summary: Logout current session (revoke refresh token, clear cookies)
+      tags: [Auth]
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+        '400':
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/logout-all:
+    post:
+      operationId: logoutAllSessions
+      summary: Logout from all devices (protected)
+      tags: [Auth]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Logged out from all sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+        '401':
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/sessions:
+    get:
+      operationId: listSessions
+      summary: List active sessions for authenticated user
+      tags: [Auth]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionsResponse'
+        '401':
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/request-password-reset:
+    post:
+      operationId: requestPasswordReset
+      summary: Request password reset email (always returns success)
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPasswordReset'
+            example:
+              email: user@example.com
+      responses:
+        '200':
+          description: Request accepted (generic success)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/auth/validate-reset-token:
+    get:
+      operationId: validateResetToken
+      summary: Validate password reset token (optional endpoint)
+      tags: [Auth]
+      parameters:
+        - in: query
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Token valid, returns email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateResetTokenResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/reset-password:
+    post:
+      operationId: resetPassword
+      summary: Reset password using token
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPassword'
+            example:
+              token: 'abcd1234ef567890abcd1234ef567890abcd1234ef567890abcd1234ef567890'
+              newPassword: 'NewP@ssw0rd!'
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/change-password:
+    post:
+      operationId: changePassword
+      summary: Change password (authenticated)
+      tags: [Auth]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+            example:
+              currentPassword: 'OldP@ssw0rd!'
+              newPassword: 'NewP@ssw0rd!'
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/2fa/enable:
+    post:
+      operationId: enable2fa
+      summary: Enable two-factor authentication for authenticated user
+      tags: [Auth]
+      security:
+        - cookieAuth: []
+      description: |
+        Enable two-factor authentication for the current authenticated user.
+        No request body required. Service will enable 2FA and perform necessary side-effects
+        (store secret, revoke remembered devices/sessions as configured).
+      responses:
+        '200':
+          description: Two-factor enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/2fa/disable:
+    post:
+      operationId: disable2fa
+      summary: Disable two-factor authentication for authenticated user
+      tags: [Auth]
+      security:
+        - cookieAuth: []
+      description: |
+        Disable two-factor authentication for the current authenticated user.
+        No request body required. Service will remove 2FA secret, revoke remembered devices and sessions.
+      responses:
+        '200':
+          description: Two-factor disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /api/v1/messages:
+    get:
+      operationId: listMessages
+      summary: List messages (optional filters)
+      tags: [Messages]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+        - in: query
+          name: category
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Message list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageListResponse'
+        '401':
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: createMessage
+      summary: Create a message (admin)
+      tags: [Messages]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMessageRequest'
+            example:
+              key: 'PASSWORD_RESET_TEMPLATE_MISSING_CONTEXT'
+              type: 'error'
+              category: 'auth'
+              value: 'Password reset template requires user and token in context'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Error'
+  /api/v1/messages/key/{key}:
+    get:
+      operationId: getMessageByKey
+      summary: Get message by key
+      tags: [Messages]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema:
+            type: string
+          description: Message key (e.g. 'welcome.email')
+      responses:
+        '200':
+          description: Message found by key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+  /api/v1/messages/refresh-cache:
+    post:
+      operationId: refreshMessageCache
+      summary: Refresh message cache (admin)
+      tags: [Messages]
+      security:
+        - cookieAuth: []
+      description: Forces reload of messages from database into in-memory cache.
+      responses:
+        '200':
+          description: Cache refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /api/v1/messages/{id}:
+    get:
+      operationId: getMessageById
+      summary: Get message by ID
+      tags: [Messages]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Message found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+    put:
+      operationId: updateMessage
+      summary: Update a message (admin)
+      tags: [Messages]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMessageRequest'
+            example:
+              key: 'welcome.email'
+              type: 'success'
+              category: 'user'
+              value: 'Welcome, {{name}}!'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+    delete:
+      operationId: deleteMessage
+      summary: Delete a message (admin)
+      tags: [Messages]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted (no content)
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: accessToken
+      description: >-
+        httpOnly access token cookie. For UI testing you can also use the
+        Authorization header with Bearer tokens if your client supports it.
+  responses:
+    Error:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+  schemas:
+    GenericSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        count:
+          type: integer
+        data:
+          type: object
+        meta:
+          type: object
+          nullable: true
+        requestId:
+          type: string
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            code:
+              type: string
+            statusCode:
+              type: integer
+            details:
+              type: array
+              items:
+                type: object
+            requestId:
+              type: string
+    ValidationErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            name:
+              type: string
+              example: ValidationError
+            message:
+              type: string
+              example: Validation failed
+            statusCode:
+              type: integer
+              example: 400
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            details:
+              type: array
+            requestId:
+              type: string
+    RegisterRequest:
+      type: object
+      required: [email, password, fullName]
+      properties:
+        email:
+          type: string
+          format: email
+          description: Lowercased, trimmed email (see src/schemas/common.schemas.ts)
+          example: user@example.com
+        password:
+          type: string
+          description: Strong password (min 8, upper, lower, number, special)
+          example: P@ssw0rd!
+        fullName:
+          type: string
+          example: 'Jane Doe'
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        rememberDevice:
+          type: boolean
+    LoginSuccessResponse:
+      type: object
+      required: [success, data, message, requestId]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [id, email, fullName, role, isEmailConfirmed, twoFactorEnabled]
+          properties:
+            id:
+              type: string
+            email:
+              type: string
+            fullName:
+              type: string
+            role:
+              type: string
+            isEmailConfirmed:
+              type: boolean
+            twoFactorEnabled:
+              type: boolean
+        message:
+          type: string
+        requestId:
+          type: string
+    TwoFactorRequiredResponse:
+      type: object
+      required: [success, message, data, requestId]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+          required: [userId]
+          properties:
+            userId:
+              type: string
+        requestId:
+          type: string
+    ConfirmTwoFactorRequest:
+      type: object
+      required: [userId, code]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        code:
+          type: string
+    RequestPasswordReset:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    ResendConfirmationRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email to resend confirmation link to
+    ResetPassword:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+          description: Hex token (min length 32)
+        newPassword:
+          type: string
+          description: New password (same constraints as registration)
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+    ValidateResetTokenResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+        requestId:
+          type: string
+    Session:
+      type: object
+      properties:
+        tokenId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        userAgent:
+          type: string
+        ipAddress:
+          type: string
+    SessionsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            sessions:
+              type: array
+              items:
+                $ref: '#/components/schemas/Session'
+            count:
+              type: integer
+        requestId:
+          type: string
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        key:
+          type: string
+        type:
+          type: string
+        category:
+          type: string
+        value:
+          type: string
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    MessageListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            messages:
+              type: array
+              items:
+                $ref: '#/components/schemas/Message'
+            count:
+              type: integer
+        requestId:
+          type: string
+    MessageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            message:
+              $ref: '#/components/schemas/Message'
+        requestId:
+          type: string
+    CreateMessageRequest:
+      type: object
+      required: [key, type, category, value]
+      properties:
+        key:
+          type: string
+        type:
+          type: string
+        category:
+          type: string
+        value:
+          type: string
+        description:
+          type: string
+          nullable: true
+    UpdateMessageRequest:
+      type: object
+      required: [key, type, category, value]
+      properties:
+        key:
+          type: string
+        type:
+          type: string
+        category:
+          type: string
+        value:
+          type: string
+        description:
+          type: string
+          nullable: true
