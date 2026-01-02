@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useGetMessageById, useUpdateMessage } from '@/hooks/useMessages';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Loader2 } from 'lucide-react';
@@ -78,99 +79,156 @@ export default function EditMessagePage() {
           <ArrowLeft className='size-4 mr-2' />
           Back
         </Button>
-        <div className='text-center py-12'>
-          <p className='text-muted-foreground'>Message not found.</p>
-        </div>
+        <Card>
+          <CardContent className='text-center py-12'>
+            <p className='text-muted-foreground'>Message not found.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className='mx-auto max-w-2xl space-y-6 px-4'>
-      <Button variant='outline' onClick={() => navigate(-1)}>
+      {/* <Button variant='outline' onClick={() => navigate(-1)}>
         <ArrowLeft className='size-4 mr-2' />
         Back
-      </Button>
+      </Button> */}
 
-      <h1 className='text-3xl font-bold'>Edit Message</h1>
+      <Card className='py-4'>
+        <CardHeader>
+          <div className='flex items-center justify-between'>
+            <div>
+              <CardTitle className='text-2xl'>Edit Message</CardTitle>
+              <CardDescription>Update the message details</CardDescription>
+            </div>
+            <div>
+              <Button variant='outline' onClick={() => navigate(-1)}>
+                <ArrowLeft className='size-4 mr-2' />
+                Back
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
 
-      <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6'>
-        <FieldGroup>
-          <Controller
-            name='key'
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor='key'>Key</FieldLabel>
-                <Input {...field} id='key' placeholder='MESSAGE_KEY' disabled={updateMessage.isPending} />
-                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-              </Field>
-            )}
-          />
+        <CardContent>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-2'>
+            <FieldGroup>
+              <Controller
+                name='key'
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor='key'>Key</FieldLabel>
+                    <Input
+                      {...field}
+                      id='key'
+                      placeholder='MESSAGE_KEY'
+                      aria-invalid={fieldState.invalid}
+                      disabled={updateMessage.isPending}
+                    />
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
 
-          <Controller
-            name='type'
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor='type'>Type</FieldLabel>
-                <Input {...field} id='type' placeholder='success, error, etc.' disabled={updateMessage.isPending} />
-                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-              </Field>
-            )}
-          />
+              <Controller
+                name='type'
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor='type'>Type</FieldLabel>
+                    <Input
+                      {...field}
+                      id='type'
+                      placeholder='success, error, etc.'
+                      aria-invalid={fieldState.invalid}
+                      disabled={updateMessage.isPending}
+                    />
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
 
-          <Controller
-            name='category'
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor='category'>Category</FieldLabel>
-                <Input {...field} id='category' placeholder='auth, user, etc.' disabled={updateMessage.isPending} />
-                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-              </Field>
-            )}
-          />
+              <Controller
+                name='category'
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor='category'>Category</FieldLabel>
+                    <Input
+                      {...field}
+                      id='category'
+                      placeholder='auth, user, etc.'
+                      aria-invalid={fieldState.invalid}
+                      disabled={updateMessage.isPending}
+                    />
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
 
-          <Controller
-            name='value'
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor='value'>Value</FieldLabel>
-                <Input {...field} id='value' placeholder='Message text' disabled={updateMessage.isPending} />
-                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-              </Field>
-            )}
-          />
+              <Controller
+                name='value'
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor='value'>Value</FieldLabel>
+                    <Input
+                      {...field}
+                      id='value'
+                      placeholder='Message text'
+                      aria-invalid={fieldState.invalid}
+                      disabled={updateMessage.isPending}
+                    />
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
 
-          <Controller
-            name='description'
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor='description'>Description (optional)</FieldLabel>
-                <Input
-                  {...field}
-                  id='description'
-                  placeholder='Optional description'
-                  disabled={updateMessage.isPending}
-                />
-                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-              </Field>
-            )}
-          />
-        </FieldGroup>
+              <Controller
+                name='description'
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor='description'>Description (optional)</FieldLabel>
+                    <Input
+                      {...field}
+                      id='description'
+                      placeholder='Optional description'
+                      aria-invalid={fieldState.invalid}
+                      disabled={updateMessage.isPending}
+                    />
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+            </FieldGroup>
 
-        <div className='flex gap-3'>
-          <Button type='submit' disabled={updateMessage.isPending || !form.formState.isValid}>
-            {updateMessage.isPending ? 'Updating...' : 'Update Message'}
-          </Button>
-          <Button type='button' variant='outline' onClick={() => navigate(-1)} disabled={updateMessage.isPending}>
-            Cancel
-          </Button>
-        </div>
-      </form>
+            <div className='space-y-3 mt-4'>
+              <Button type='submit' className='w-full' disabled={updateMessage.isPending || !form.formState.isValid}>
+                {updateMessage.isPending ? (
+                  <>
+                    <Loader2 className='size-4 mr-2 animate-spin' />
+                    Updating...
+                  </>
+                ) : (
+                  'Update Message'
+                )}
+              </Button>
+
+              <Button
+                type='button'
+                variant='outline'
+                className='w-full'
+                onClick={() => navigate(-1)}
+                disabled={updateMessage.isPending}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

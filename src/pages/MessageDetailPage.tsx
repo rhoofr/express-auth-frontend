@@ -39,9 +39,9 @@ export default function MessageDetailPage() {
   if (!message) {
     return (
       <div className='mx-auto max-w-4xl space-y-6 px-4'>
-        <Button variant='outline' onClick={() => navigate(-1)}>
+        <Button variant='outline' onClick={() => navigate('/messages')}>
           <ArrowLeft className='size-4 mr-2' />
-          Back
+          Back to Messages
         </Button>
         <Card>
           <CardHeader>
@@ -57,9 +57,9 @@ export default function MessageDetailPage() {
     <div className='mx-auto max-w-4xl space-y-6 px-4'>
       {/* Header with Back Button */}
       <div className='flex items-center justify-between'>
-        <Button variant='outline' onClick={() => navigate(-1)}>
+        <Button variant='outline' onClick={() => navigate('/messages')}>
           <ArrowLeft className='size-4 mr-2' />
-          Back
+          Back to Messages
         </Button>
 
         {isAdmin && (
