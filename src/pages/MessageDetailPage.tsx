@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ArrowLeft, Edit, Trash2, Loader2 } from 'lucide-react';
 
 export default function MessageDetailPage() {
@@ -19,9 +20,10 @@ export default function MessageDetailPage() {
   const deleteMessage = useDeleteMessage();
 
   const handleDelete = () => {
-    if (!id || !confirm('Are you sure you want to delete this message?')) return;
+    if (!id) return;
+
     deleteMessage.mutate(id, {
-      onSuccess: () => navigate(-1),
+      onSuccess: () => navigate('/messages'),
     });
   };
 
@@ -33,7 +35,6 @@ export default function MessageDetailPage() {
     );
   }
 
-  // Access message directly from data.data (which is Message)
   const message = data?.data;
 
   if (!message) {
@@ -68,10 +69,19 @@ export default function MessageDetailPage() {
               <Edit className='size-4 mr-2' />
               Edit
             </Button>
-            <Button variant='destructive' onClick={handleDelete} disabled={deleteMessage.isPending}>
-              <Trash2 className='size-4 mr-2' />
-              {deleteMessage.isPending ? 'Deleting...' : 'Delete'}
-            </Button>
+            <ConfirmDialog
+              trigger={
+                <Button variant='destructive'>
+                  <Trash2 className='size-4 mr-2' />
+                  Delete
+                </Button>
+              }
+              title='Delete Message'
+              description={`Are you sure you want to delete "${message.key}"? This action cannot be undone and will permanently remove this message from the system.`}
+              confirmText='Delete Message'
+              onConfirm={handleDelete}
+              isLoading={deleteMessage.isPending}
+            />
           </div>
         )}
       </div>

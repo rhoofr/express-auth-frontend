@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2 } from 'lucide-react';
 import { useDeleteMessage } from '@/hooks/useMessages';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { Message } from '@/types/api';
 
 interface MessageItemProps {
@@ -19,14 +20,7 @@ export function MessageItem({ message, isAdmin }: MessageItemProps) {
   const navigate = useNavigate();
   const deleteMessage = useDeleteMessage();
 
-  const handleDelete = (e: React.MouseEvent) => {
-    // Prevent card click navigation when clicking delete button
-    e.stopPropagation();
-
-    if (!confirm(`Are you sure you want to delete message "${message.key}"?`)) {
-      return;
-    }
-
+  const handleDelete = () => {
     deleteMessage.mutate(message.id);
   };
 
@@ -70,16 +64,25 @@ export function MessageItem({ message, isAdmin }: MessageItemProps) {
                 aria-label={`Edit ${message.key}`}>
                 <Edit className='size-3.5' />
               </Button>
-              <Button
-                variant='destructive'
-                size='icon'
-                onClick={handleDelete}
-                disabled={deleteMessage.isPending}
-                className='size-7'
-                title='Delete message'
-                aria-label={`Delete ${message.key}`}>
-                <Trash2 className='size-3.5' />
-              </Button>
+              <div onClick={(e) => e.stopPropagation()}>
+                <ConfirmDialog
+                  trigger={
+                    <Button
+                      variant='destructive'
+                      size='icon'
+                      className='size-7'
+                      title='Delete message'
+                      aria-label={`Delete ${message.key}`}>
+                      <Trash2 className='size-3.5' />
+                    </Button>
+                  }
+                  title='Delete Message'
+                  description={`Are you sure you want to delete "${message.key}"? This action cannot be undone.`}
+                  confirmText='Delete'
+                  onConfirm={handleDelete}
+                  isLoading={deleteMessage.isPending}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -97,7 +100,7 @@ export function MessageItem({ message, isAdmin }: MessageItemProps) {
 
       {/* Desktop Layout (single line) */}
       <div className='hidden md:flex items-center gap-4'>
-        {/* Key  style={{ width: '200px' }} */}
+        {/* Key */}
         <div className='flex items-center gap-1.5 min-w-0 shrink-0 w-2/5'>
           <span className='text-xs font-medium text-muted-foreground whitespace-nowrap'>Key:</span>
           <span className='text-sm font-medium truncate'>{message.key}</span>
@@ -137,16 +140,25 @@ export function MessageItem({ message, isAdmin }: MessageItemProps) {
               aria-label={`Edit ${message.key}`}>
               <Edit className='size-3.5' />
             </Button>
-            <Button
-              variant='destructive'
-              size='icon'
-              onClick={handleDelete}
-              disabled={deleteMessage.isPending}
-              className='size-7'
-              title='Delete message'
-              aria-label={`Delete ${message.key}`}>
-              <Trash2 className='size-3.5' />
-            </Button>
+            <div onClick={(e) => e.stopPropagation()}>
+              <ConfirmDialog
+                trigger={
+                  <Button
+                    variant='destructive'
+                    size='icon'
+                    className='size-7'
+                    title='Delete message'
+                    aria-label={`Delete ${message.key}`}>
+                    <Trash2 className='size-3.5' />
+                  </Button>
+                }
+                title='Delete Message'
+                description={`Are you sure you want to delete "${message.key}"? This action cannot be undone.`}
+                confirmText='Delete'
+                onConfirm={handleDelete}
+                isLoading={deleteMessage.isPending}
+              />
+            </div>
           </div>
         )}
       </div>
