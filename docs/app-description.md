@@ -756,43 +756,33 @@ async function logoutAllDevices() {
 
 ---
 
-### 8. Password Management
+### 8. Password Management (Three-Tier Reset Flow)
 
-#### Request Password Reset
+#### Three-Tier Architecture
+
+**TIER 1:** User requests reset → Email sent with link to backend GET endpoint  
+**TIER 2:** User clicks email link → Backend redirects to frontend with token  
+**TIER 3:** User submits new password → Frontend POSTs to API
+
+---
+
+#### Request Password Reset (TIER 1)
 
 **Endpoint:** `POST /api/v1/auth/request-password-reset`
 
-**Request Body:**
+**Request:** `{ "email": "user@example.com" }`
 
-```json
-{
-  "email": "user@example.com"
-}
-```
-
-**Success Response (200):**
+**Response (200):** Always returns success (prevents email enumeration)
 
 ```json
 {
   "success": true,
-  "message": "If an account with that email exists, a password reset link has been sent.",
+  "message": "If that email address is registered, you will receive password reset instructions.",
   "requestId": "req-pwd-reset001"
 }
 ```
 
-**What Happens:**
-
-- User looked up by email (no error if not found for security)
-- Password reset token generated (valid for 1 hour)
-- Token stored hashed in database
-- Reset email sent with link containing token
-- Previous unused reset tokens for user invalidated
-
-**Common Errors:**
-
-- 429 Too Many Requests: Rate limit exceeded (max 3 requests per hour per email)
-
-#### Validate Reset Token
+#### Validate Reset Token (TIER 2)
 
 **Endpoint:** `GET /api/v1/auth/validate-reset-token?token={token}`
 
@@ -825,7 +815,7 @@ async function logoutAllDevices() {
 - 404 Not Found: Token not found
 - 410 Gone: Token expired or already used
 
-#### Reset Password
+#### Reset Password (TIER 3)
 
 **Endpoint:** `POST /api/v1/auth/reset-password`
 
@@ -1267,8 +1257,7 @@ try {
   "data": {
     /* ... */
   },
-  "count": 1, // Optional: for list endpoints
-  "requestId": "req-abc123"
+  "count": 1 // Optional: for list endpoints
 }
 ```
 

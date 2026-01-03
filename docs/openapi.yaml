@@ -15,6 +15,10 @@ security:
 tags:
   - name: System
     description: System-level endpoints (health, metrics)
+  - name: Auth
+    description: Authentication and authorization endpoints
+  - name: Messages
+    description: Message management endpoints (admin only for write operations)
 paths:
   /health:
     get:
@@ -294,11 +298,106 @@ paths:
                 $ref: '#/components/schemas/SessionsResponse'
         '401':
           $ref: '#/components/responses/Error'
+  /reset-password:
+    get:
+      operationId: passwordResetLandingPage
+      summary: Password reset landing page (redirect to frontend)
+      tags: [Auth]
+      description: |
+        Entry point for password reset links in emails. Redirects to frontend application.
+
+        **Three-Tier Password Reset Flow:**
+
+        TIER 1: Request Reset (User initiates)
+        - User submits email → POST /api/v1/auth/request-password-reset
+        - Backend generates token and sends email
+        - Email contains: http://api.example.com/reset-password?token=abc123
+
+        TIER 2: Landing Page (This endpoint - User clicks email link)
+        - Browser sends GET request with token from email
+        - Backend redirects → https://frontend.com/reset-password?token=abc123
+        - Frontend validates token and shows password form
+        - Optional: Frontend calls /api/v1/auth/validate-reset-token
+
+        TIER 3: Password Submission (User submits form)
+        - Frontend POSTs to /api/v1/auth/reset-password
+        - Backend validates token, updates password, revokes sessions
+
+        **Configuration:**
+        - Uses FRONTEND_URL environment variable
+        - Falls back to APP_BASE_URL if FRONTEND_URL not set
+
+        **Security:**
+        - No token validation at this endpoint (frontend handles it)
+        - Token passed via URL query parameter (acceptable for single-use, time-limited tokens)
+        - Actual validation happens at /api/v1/auth/reset-password
+      parameters:
+        - in: query
+          name: token
+          schema:
+            type: string
+          required: false
+          description: Password reset token from email (optional, preserved in redirect)
+      responses:
+        '200':
+          description: Success response (fallback if redirect fails or frontend URL not configured)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccess'
+              example:
+                success: true
+                message: 'Password reset page. Please configure FRONTEND_URL.'
+                requestId: 'req-reset-landing-001'
+        '302':
+          description: Redirect to frontend application with token preserved (primary response)
+          headers:
+            Location:
+              schema:
+                type: string
+              description: Frontend URL with token parameter
+              example: https://frontend.example.com/reset-password?token=abc123
+        '400':
+          description: Invalid request (malformed token parameter)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/auth/request-password-reset:
     post:
       operationId: requestPasswordReset
-      summary: Request password reset email (always returns success)
+      summary: Request password reset email (TIER 1 - always returns success)
       tags: [Auth]
+      description: |
+        Initiates the password reset flow by generating a token and sending reset email.
+
+        **Three-Tier Flow - TIER 1: Request Reset**
+
+        This is the starting point of the password reset process:
+        1. User provides email address
+        2. Backend generates secure reset token (32 bytes, SHA-256 hashed)
+        3. Backend sends email with link to GET /reset-password (TIER 2)
+        4. Email link format: http://api.example.com/reset-password?token=abc123
+        5. Always returns success (prevents email enumeration)
+
+        **Next Steps:**
+        - User receives email with reset link
+        - User clicks link → Redirected to frontend (TIER 2)
+        - Frontend validates token and shows password form
+        - User submits new password → Frontend POSTs to /api/v1/auth/reset-password (TIER 3)
+
+        **Security Features:**
+        - Always returns 200 success (no information about email existence)
+        - Rate limiting: max 3 pending tokens per user
+        - Short token expiration: 1 hour
+        - Single-use tokens (marked as used after password reset)
+        - Tokens stored hashed in database (SHA-256)
+
+        **Email Content:**
+        - Link points to GET /reset-password endpoint (not POST)
+        - Token embedded in URL as query parameter
+        - Clear instructions for resetting password
+        - Security warning if user didn't request reset
       requestBody:
         required: true
         content:
@@ -309,40 +408,122 @@ paths:
               email: user@example.com
       responses:
         '200':
-          description: Request accepted (generic success)
+          description: Request accepted (generic success regardless of email existence)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/GenericSuccess'
+              example:
+                success: true
+                message: 'If that email address is registered, you will receive password reset instructions.'
+                requestId: 'req-pwd-reset-001'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '429':
+          description: Rate limit exceeded (too many pending reset tokens)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/auth/validate-reset-token:
     get:
       operationId: validateResetToken
-      summary: Validate password reset token (optional endpoint)
+      summary: Validate password reset token (TIER 2 - optional frontend check)
       tags: [Auth]
+      description: |
+        Optional helper endpoint to validate reset token before showing password form.
+
+        **Three-Tier Flow - TIER 2: Frontend Validation (Optional)**
+
+        After user lands on frontend reset page (from email link redirect), frontend can:
+        1. Extract token from URL query parameter
+        2. Call this endpoint to validate token
+        3. Display user's email in form if valid
+        4. Show clear error message if invalid/expired
+
+        **Why Optional:**
+        - Basic flow works without this endpoint
+        - Improves UX by showing errors immediately
+        - Prevents user from filling form with invalid token
+
+        **Token Validation Checks:**
+        - Token exists in database
+        - Token hasn't expired (< 1 hour old)
+        - Token hasn't been used already
+        - User account still exists
+
+        **Next Step:**
+        - If valid: Frontend shows password form with user's email
+        - User submits form → POST /api/v1/auth/reset-password (TIER 3)
       parameters:
         - in: query
           name: token
           required: true
           schema:
             type: string
+            minLength: 32
+          description: Password reset token from email link
       responses:
         '200':
-          description: Token valid, returns email
+          description: Token valid, returns user email
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidateResetTokenResponse'
+              example:
+                success: true
+                data:
+                  email: user@example.com
+                requestId: 'req-validate-token-001'
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
-          $ref: '#/components/responses/Error'
+          description: Token invalid, expired, or already used
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/auth/reset-password:
     post:
       operationId: resetPassword
-      summary: Reset password using token
+      summary: Reset password using token (TIER 3 - password submission)
       tags: [Auth]
+      description: |
+        Completes password reset by validating token and updating password.
+
+        **Three-Tier Flow - TIER 3: Password Submission**
+
+        Final step where user submits new password:
+        1. Frontend collects token (from URL) and new password (from form)
+        2. Frontend POSTs both to this endpoint
+        3. Backend validates token (exists, not expired, not used)
+        4. Backend validates password strength (8+ chars, uppercase, lowercase, number, special)
+        5. Backend updates password (bcrypt hashed with 12 rounds)
+        6. Backend marks token as used (single-use)
+        7. Backend revokes ALL user sessions (logout all devices)
+        8. Backend sends password changed confirmation email
+        9. User must log in again with new password
+
+        **Security Actions:**
+        - Token validation (not expired, not used)
+        - Password strength validation
+        - Password hashing (bcrypt, 12 rounds)
+        - Token marked as used (prevents reuse)
+        - All refresh tokens revoked (logout all devices)
+        - All password reset tokens deleted
+        - Confirmation email sent
+
+        **After Reset:**
+        - User logged out from ALL devices (security best practice)
+        - Old password no longer works
+        - Token cannot be reused
+        - User redirected to login page
       requestBody:
         required: true
         content:
@@ -359,12 +540,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GenericSuccess'
+              example:
+                success: true
+                message: 'Password reset successful. Please log in with your new password.'
+                requestId: 'req-pwd-reset-002'
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
-          $ref: '#/components/responses/Error'
+          description: Token invalid, expired, or already used
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
-          $ref: '#/components/responses/Error'
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/auth/change-password:
     post:
       operationId: changePassword
@@ -457,7 +650,32 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageListResponse'
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+                  count:
+                    type: integer
+                  requestId:
+                    type: string
+              example:
+                success: true
+                data:
+                  - id: 'msg-uuid-1'
+                    key: 'LOGIN_SUCCESS'
+                    type: 'success'
+                    category: 'auth'
+                    value: 'Login successful'
+                    description: null
+                    created_at: '2024-01-01T00:00:00.000Z'
+                    updated_at: '2024-01-01T00:00:00.000Z'
+                count: 1
+                requestId: 'req-messages001'
         '401':
           $ref: '#/components/responses/Error'
     post:
@@ -483,11 +701,35 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Message'
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+              example:
+                success: true
+                data:
+                  id: 'msg-uuid-new'
+                  key: 'PASSWORD_RESET_TEMPLATE_MISSING_CONTEXT'
+                  type: 'error'
+                  category: 'auth'
+                  value: 'Password reset template requires user and token in context'
+                  description: null
+                  created_at: '2024-01-20T15:00:00.000Z'
+                  updated_at: '2024-01-20T15:00:00.000Z'
+                message: 'Message created successfully'
+                requestId: 'req-messages004'
         '400':
           $ref: '#/components/responses/ValidationError'
         '403':
           $ref: '#/components/responses/Error'
+
   /api/v1/messages/key/{key}:
     get:
       operationId: getMessageByKey
@@ -508,11 +750,32 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Message'
+                  requestId:
+                    type: string
+              example:
+                success: true
+                data:
+                  id: 'msg-uuid-1'
+                  key: 'LOGIN_SUCCESS'
+                  type: 'success'
+                  category: 'auth'
+                  value: 'Login successful'
+                  description: null
+                  created_at: '2024-01-01T00:00:00.000Z'
+                  updated_at: '2024-01-01T00:00:00.000Z'
+                requestId: 'req-messages002'
         '404':
           $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
+
   /api/v1/messages/refresh-cache:
     post:
       operationId: refreshMessageCache
@@ -532,6 +795,7 @@ paths:
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
+
   /api/v1/messages/{id}:
     get:
       operationId: getMessageById
@@ -552,7 +816,27 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Message'
+                  requestId:
+                    type: string
+              example:
+                success: true
+                data:
+                  id: 'msg-uuid-1'
+                  key: 'LOGIN_SUCCESS'
+                  type: 'success'
+                  category: 'auth'
+                  value: 'Login successful'
+                  description: null
+                  created_at: '2024-01-01T00:00:00.000Z'
+                  updated_at: '2024-01-01T00:00:00.000Z'
+                requestId: 'req-messages003'
         '404':
           $ref: '#/components/responses/Error'
         '401':
@@ -587,7 +871,30 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Message'
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+              example:
+                success: true
+                data:
+                  id: 'msg-uuid-1'
+                  key: 'welcome.email'
+                  type: 'success'
+                  category: 'user'
+                  value: 'Welcome, {{name}}!'
+                  description: null
+                  created_at: '2024-01-01T00:00:00.000Z'
+                  updated_at: '2024-01-20T15:30:00.000Z'
+                message: 'Message updated successfully'
+                requestId: 'req-messages005'
         '400':
           $ref: '#/components/responses/ValidationError'
         '403':
@@ -889,16 +1196,14 @@ components:
           type: boolean
           example: true
         data:
-          type: object
-          properties:
-            messages:
-              type: array
-              items:
-                $ref: '#/components/schemas/Message'
-            count:
-              type: integer
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+        count:
+          type: integer
         requestId:
           type: string
+
     MessageResponse:
       type: object
       properties:
@@ -906,10 +1211,7 @@ components:
           type: boolean
           example: true
         data:
-          type: object
-          properties:
-            message:
-              $ref: '#/components/schemas/Message'
+          $ref: '#/components/schemas/Message'
         requestId:
           type: string
     CreateMessageRequest:
