@@ -17,11 +17,13 @@ import MessageDetailPage from '@/pages/MessageDetailPage';
 import CreateMessagePage from '@/pages/CreateMessagePage';
 import EditMessagePage from '@/pages/EditMessagePage';
 import ProfilePage from '@/pages/ProfilePage';
+import SettingsPage from '@/pages/SettingsPage';
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
+import ResetPasswordPage from '@/pages/ResetPasswordPage';
 
 const routes = [
   { path: '/', label: 'Home', protected: false },
   { path: '/messages', label: 'Messages', protected: true },
-  { path: '/profile', label: 'Profile', protected: true },
 ];
 
 function App() {
@@ -35,6 +37,8 @@ function App() {
           <Route path='/' element={<HomePage />} />
           <Route path='/login' element={<LoginPage />} />
           <Route path='/register' element={<RegisterPage />} />
+          <Route path='/forgot-password' element={<ForgotPasswordPage />} />
+          <Route path='/reset-password' element={<ResetPasswordPage />} />
           <Route path='/forbidden' element={<ForbiddenPage />} />
 
           {/* Protected Routes - Require Authentication */}
@@ -43,6 +47,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path='/settings'
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
               </ProtectedRoute>
             }
           />

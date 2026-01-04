@@ -111,6 +111,10 @@ export function Navbar({ routes, theme, setTheme }: NavbarProps) {
                 <Settings className='size-4 mr-2' />
                 Profile
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <Settings className='size-4 mr-2' />
+                Settings
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} disabled={logoutMutation.isPending}>
                 <LogOut className='size-4 mr-2' />

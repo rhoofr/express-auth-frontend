@@ -25,8 +25,18 @@ import type {
 
 const BASE = API_ENDPOINTS.AUTH;
 
-function getErrorMessage(error: ApiErrorResponse) {
-  return error?.error?.message || 'An unknown error occurred';
+function getErrorMessage(error: ApiErrorResponse | { error: string; meta?: { retryAfterSeconds?: number } }) {
+  // Handle rate limit error format (error is a string)
+  if (typeof error === 'object' && 'error' in error && typeof error.error === 'string') {
+    return error.error;
+  }
+
+  // Handle standard API error format (error.error.message)
+  if (typeof error === 'object' && 'error' in error && typeof error.error === 'object' && error.error !== null) {
+    return error.error.message || 'An unknown error occurred';
+  }
+
+  return 'An unknown error occurred';
 }
 
 // Register
@@ -64,6 +74,7 @@ export function useLogin() {
       if ('data' in response && response.data && 'email' in response.data) {
         // Full login success - update store
         setUser(response.data);
+        toast.success(response.message);
       }
       // If it's 2FA required, don't update store yet - will be handled by confirm2fa
     },
@@ -193,8 +204,8 @@ export function useValidateResetToken(token: string) {
     queryFn: () =>
       request<ValidateResetTokenResponse>({
         url: `${BASE}/validate-reset-token`,
-        method: 'POST',
-        data: { token },
+        method: 'GET',
+        params: { token },
       }),
     enabled: !!token,
   });
