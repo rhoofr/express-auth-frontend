@@ -12,6 +12,7 @@ import HomePage from '@/pages/HomePage';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import ForbiddenPage from '@/pages/ForbiddenPage';
+import NotFoundPage from '@/pages/NotFoundPage';
 import MessagesPage from '@/pages/MessagesPage';
 import MessageDetailPage from '@/pages/MessageDetailPage';
 import CreateMessagePage from '@/pages/CreateMessagePage';
@@ -101,6 +102,9 @@ function App() {
               </AdminRoute>
             }
           />
+
+          {/* Catch-All Route - Must be last */}
+          <Route path='*' element={<NotFoundPage />} />
         </Routes>
       </main>
     </Router>

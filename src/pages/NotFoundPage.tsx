@@ -1,13 +1,13 @@
 /**
- * @module pages/ForbiddenPage
- * Page shown when user tries to access a resource they don't have permission for.
+ * @module pages/NotFoundPage
+ * Page shown when user navigates to a non-existent route.
  */
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShieldAlert } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
-export default function ForbiddenPage() {
+export default function NotFoundPage() {
   const navigate = useNavigate();
 
   return (
@@ -15,11 +15,11 @@ export default function ForbiddenPage() {
       <Card>
         <CardHeader>
           <div className='flex items-center gap-2'>
-            <ShieldAlert className='size-5 text-red-500' />
-            <CardTitle>403 - Access Denied</CardTitle>
+            <AlertCircle className='size-5 text-yellow-500' />
+            <CardTitle>404 - Page Not Found</CardTitle>
           </div>
           <CardDescription>
-            You don't have permission to access this page. This area is restricted to administrators only.
+            The page you're looking for doesn't exist. It may have been moved or deleted.
           </CardDescription>
         </CardHeader>
         <CardContent className='space-y-4'>
