@@ -238,6 +238,7 @@ export default function LoginPage() {
                     aria-invalid={!!twoFactorForm.formState.errors.code}
                     disabled={confirm2faMutation.isPending}
                     autoComplete='one-time-code'
+                    autoFocus
                   />
                   {twoFactorForm.formState.errors.code && <FieldError errors={[twoFactorForm.formState.errors.code]} />}
                 </Field>
@@ -304,6 +305,7 @@ export default function LoginPage() {
                       aria-invalid={fieldState.invalid}
                       disabled={loginMutation.isPending}
                       autoComplete='email'
+                      autoFocus
                     />
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>

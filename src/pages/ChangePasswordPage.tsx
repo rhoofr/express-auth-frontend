@@ -101,6 +101,7 @@ export default function ChangePasswordPage() {
                 {...register('currentPassword')}
                 disabled={isSubmitting}
                 autoComplete='current-password'
+                autoFocus
               />
               {errors.currentPassword && <p className='text-sm text-destructive'>{errors.currentPassword.message}</p>}
             </div>

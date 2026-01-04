@@ -70,6 +70,7 @@ export function SearchBar({
         onChange={handleInputChange}
         className='pl-9 pr-9'
         aria-label='Search'
+        autoFocus
       />
 
       {/* Clear Button (only visible when there's text) */}

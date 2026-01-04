@@ -81,6 +81,7 @@ export default function CreateMessagePage() {
                       placeholder='MESSAGE_KEY'
                       aria-invalid={fieldState.invalid}
                       disabled={createMessage.isPending}
+                      autoFocus
                     />
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
