@@ -2,6 +2,7 @@
  * @module pages/SettingsPage
  * User settings page for password management and two-factor authentication.
  */
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth';
@@ -9,6 +10,7 @@ import { useEnable2fa, useDisable2fa } from '@/hooks/useAuth';
 import { ShieldCheck, ShieldOff, KeyRound } from 'lucide-react';
 
 export default function SettingsPage() {
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const enable2faMutation = useEnable2fa();
   const disable2faMutation = useDisable2fa();
@@ -43,7 +45,9 @@ export default function SettingsPage() {
               </div>
               <p className='text-sm text-muted-foreground'>Update your current password</p>
             </div>
-            <Button variant='outline'>Change Password</Button>
+            <Button variant='outline' onClick={() => navigate('/change-password')}>
+              Change Password
+            </Button>
           </div>
         </CardContent>
       </Card>

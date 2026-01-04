@@ -115,7 +115,7 @@ api.interceptors.response.use(
     // Only log non-401 errors (401s are handled silently by token refresh)
     const is401 = error.response?.status === 401;
     if (!is401) {
-      console.error('[API Error]', error instanceof Error ? error.message : error);
+      console.error('[API Error]', error instanceof Error ? error.message : String(error));
     }
 
     // For all other errors, reject as normal
