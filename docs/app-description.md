@@ -164,7 +164,8 @@ A secure, production-ready authentication and authorization REST API built with 
 ```json
 {
   "email": "user@example.com",
-  "password": "Password123!"
+  "password": "Password123!",
+  "rememberDevice": true // Optional: remember this device for 30 days
 }
 ```
 
@@ -190,6 +191,59 @@ A secure, production-ready authentication and authorization REST API built with 
 
 - `accessToken`: httpOnly, secure (production), sameSite=strict, maxAge=15m
 - `refreshToken`: httpOnly, secure (production), sameSite=strict, maxAge=7d
+- `rememberedDeviceToken`: **(Optional)** Only set if `rememberDevice: true`. httpOnly, secure (production), sameSite=strict, maxAge=30d
+
+**Remember Device Feature:**
+
+When `rememberDevice: true` is included in the login request:
+
+1. **Backend creates remembered device record** with:
+
+   - Secure random cookie token (32 bytes, SHA-256 hashed)
+   - Device identifier (user-agent hash, SHA-256)
+   - Expiration: 30 days (configurable via `TWO_FACTOR_REMEMBER_DAYS` env var)
+
+2. **Backend sets `rememberedDeviceToken` cookie** (httpOnly, 30 days)
+
+3. **Future logins from same browser/device:**
+   - System checks for valid `rememberedDeviceToken` cookie
+   - If device is remembered and 2FA is enabled: **2FA is skipped**
+   - User logs in directly with email/password only
+
+**Frontend Implementation Example:**
+
+```typescript
+// Login form with remember device checkbox
+const [rememberDevice, setRememberDevice] = useState(false);
+
+async function handleLogin(email: string, password: string) {
+  const response = await fetch('/api/v1/auth/login', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email,
+      password,
+      rememberDevice  // Send checkbox state to backend
+    })
+  });
+
+  const data = await response.json();
+
+  if (data.success) {
+    // Login successful - redirect to dashboard
+    redirectToDashboard();
+  }
+}
+
+// In JSX:
+<input
+  type="checkbox"
+  checked={rememberDevice}
+  onChange={(e) => setRememberDevice(e.target.checked)}
+/>
+<label>Remember this device for 30 days</label>
+```
 
 **What Happens:**
 
@@ -199,26 +253,13 @@ A secure, production-ready authentication and authorization REST API built with 
 - Refresh token hash stored in database
 - User's `lastLogin` timestamp updated
 - Failed login attempts reset to 0
+- **If `rememberDevice: true`:** Remembered device record created and cookie set
 
 **Common Errors:**
 
 - 401 Unauthorized: Invalid credentials
 - 403 Forbidden: Account locked (too many failed attempts)
 - 403 Forbidden: Email not confirmed
-
-**Error Example (Invalid Credentials):**
-
-```json
-{
-  "success": false,
-  "error": {
-    "message": "Invalid email or password",
-    "code": "INVALID_CREDENTIALS",
-    "statusCode": 401,
-    "requestId": "req-err001"
-  }
-}
-```
 
 ---
 
@@ -235,9 +276,12 @@ When a user has 2FA enabled, login is a two-step process.
 ```json
 {
   "email": "user@example.com",
-  "password": "Password123!"
+  "password": "Password123!",
+  "rememberDevice": true // Optional: will be used after 2FA confirmation
 }
 ```
+
+**Note:** If `rememberDevice: true` is sent during initial login BUT 2FA is required, the remember device setting is **ignored at this step**. You must send `rememberDevice: true` in the **confirm-2fa** request (Step 2) to remember the device after successful 2FA verification.
 
 **2FA Required Response (200):**
 
@@ -246,7 +290,8 @@ When a user has 2FA enabled, login is a two-step process.
   "success": true,
   "message": "Two-factor authentication required. Please check your email for the verification code.",
   "data": {
-    "userId": "550e8400-e29b-41d4-a716-446655440000"
+    "userId": "550e8400-e29b-41d4-a716-446655440000",
+    "twoFactorRequired": true
   },
   "requestId": "req-2fa001"
 }
@@ -259,12 +304,14 @@ When a user has 2FA enabled, login is a two-step process.
 - Code stored hashed in database
 - Verification email sent to user
 - **No tokens issued yet** (requires code verification first)
+- **No remembered device cookie set** (wait for Step 2)
 
 **Frontend Action:**
 
 - Display 2FA code input form
 - Store `userId` temporarily (needed for next step)
 - Wait for user to enter code from email
+- **Preserve `rememberDevice` state** to send in next request
 
 #### Step 2: Verify 2FA Code
 
@@ -275,7 +322,8 @@ When a user has 2FA enabled, login is a two-step process.
 ```json
 {
   "userId": "550e8400-e29b-41d4-a716-446655440000",
-  "code": "123456"
+  "code": "123456",
+  "rememberDevice": true // Optional: remember this device for 30 days
 }
 ```
 
@@ -301,6 +349,53 @@ When a user has 2FA enabled, login is a two-step process.
 
 - `accessToken`: httpOnly, secure (production), sameSite=strict, maxAge=15m
 - `refreshToken`: httpOnly, secure (production), sameSite=strict, maxAge=7d
+- `rememberedDeviceToken`: **(Optional)** Only set if `rememberDevice: true`. httpOnly, secure (production), sameSite=strict, maxAge=30d
+
+**Remember Device Feature (After 2FA):**
+
+When `rememberDevice: true` is included in the confirm-2fa request:
+
+1. **Backend creates remembered device record** (same as standard login)
+2. **Backend sets `rememberedDeviceToken` cookie** (httpOnly, 30 days)
+3. **Future logins from same browser/device:**
+   - System checks for valid `rememberedDeviceToken` cookie **before** sending 2FA email
+   - If device is remembered: **2FA is skipped entirely**
+   - User logs in directly with email/password only (no OTP required)
+
+**Frontend Implementation Example:**
+
+```typescript
+// 2FA verification form with remember device checkbox
+const [rememberDevice, setRememberDevice] = useState(false);
+
+async function handleVerify2FA(userId: string, code: string) {
+  const response = await fetch('/api/v1/auth/confirm-2fa', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userId,
+      code,
+      rememberDevice  // Send checkbox state to backend
+    })
+  });
+
+  const data = await response.json();
+
+  if (data.success) {
+    // 2FA verified, tokens issued, redirect to dashboard
+    redirectToDashboard();
+  }
+}
+
+// In JSX:
+<input
+  type="checkbox"
+  checked={rememberDevice}
+  onChange={(e) => setRememberDevice(e.target.checked)}
+/>
+<label>Don't ask for codes on this device for 30 days</label>
+```
 
 **What Happens:**
 
@@ -309,6 +404,7 @@ When a user has 2FA enabled, login is a two-step process.
 - Access token (15m) and refresh token (7d) generated
 - Refresh token hash stored in database
 - User's `lastLogin` timestamp updated
+- **If `rememberDevice: true`:** Remembered device record created and cookie set
 - User redirected to application
 
 **Common Errors:**
@@ -316,20 +412,6 @@ When a user has 2FA enabled, login is a two-step process.
 - 401 Unauthorized: Invalid or expired code
 - 404 Not Found: User not found
 - 410 Gone: Code already used
-
-**Error Example (Invalid Code):**
-
-```json
-{
-  "success": false,
-  "error": {
-    "message": "Invalid or expired two-factor code",
-    "code": "INVALID_TWO_FACTOR_CODE",
-    "statusCode": 401,
-    "requestId": "req-2fa-err001"
-  }
-}
-```
 
 ---
 

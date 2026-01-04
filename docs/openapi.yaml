@@ -165,18 +165,44 @@ paths:
       operationId: loginUser
       summary: Authenticate user and issue tokens (cookies)
       tags: [Auth]
+      description: |
+        Authenticates user with email and password. Issues JWT tokens as httpOnly cookies.
+
+        **Remember Device Feature:**
+        - Set `rememberDevice: true` to skip 2FA on this device for 30 days
+        - Backend creates a remembered device record and sets `rememberedDeviceToken` cookie
+        - On future logins from same browser, 2FA will be skipped automatically
+        - Device is identified by combination of cookie token and user-agent hash
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/LoginRequest'
-            example:
-              email: user@example.com
-              password: P@ssw0rd!
+            examples:
+              standard-login:
+                summary: Standard login (without remember device)
+                value:
+                  email: user@example.com
+                  password: P@ssw0rd!
+              remember-device:
+                summary: Login with remember device enabled
+                value:
+                  email: user@example.com
+                  password: P@ssw0rd!
+                  rememberDevice: true
       responses:
         '200':
           description: Login successful OR two-factor required
+          headers:
+            Set-Cookie:
+              description: |
+                Authentication cookies set on successful login:
+                - `accessToken`: JWT access token (15 minutes, httpOnly, secure, sameSite=strict)
+                - `refreshToken`: JWT refresh token (7 days, httpOnly, secure, sameSite=strict)
+                - `rememberedDeviceToken` (optional): Only set if `rememberDevice: true` (30 days, httpOnly, secure, sameSite=strict)
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -216,18 +242,44 @@ paths:
       operationId: confirm2fa
       summary: Confirm two-factor code and issue tokens
       tags: [Auth]
+      description: |
+        Verifies the 2FA code sent via email and issues authentication tokens.
+
+        **Remember Device Feature:**
+        - Set `rememberDevice: true` to skip 2FA on this device for 30 days
+        - Backend creates a remembered device record and sets `rememberedDeviceToken` cookie
+        - On future logins from same browser, 2FA will be skipped automatically
+        - Device is identified by combination of cookie token and user-agent hash
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/ConfirmTwoFactorRequest'
-            example:
-              userId: '550e8400-e29b-41d4-a716-446655440000'
-              code: '123456'
+            examples:
+              standard-2fa:
+                summary: Standard 2FA confirmation
+                value:
+                  userId: '550e8400-e29b-41d4-a716-446655440000'
+                  code: '123456'
+              remember-device:
+                summary: 2FA confirmation with remember device enabled
+                value:
+                  userId: '550e8400-e29b-41d4-a716-446655440000'
+                  code: '123456'
+                  rememberDevice: true
       responses:
         '200':
           description: 2FA verified, tokens set
+          headers:
+            Set-Cookie:
+              description: |
+                Authentication cookies set on successful 2FA:
+                - `accessToken`: JWT access token (15 minutes, httpOnly, secure, sameSite=strict)
+                - `refreshToken`: JWT refresh token (7 days, httpOnly, secure, sameSite=strict)
+                - `rememberedDeviceToken` (optional): Only set if `rememberDevice: true` (30 days, httpOnly, secure, sameSite=strict)
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -1034,6 +1086,12 @@ components:
           type: string
         rememberDevice:
           type: boolean
+          default: false
+          description: |
+            Set to true to remember this device for 30 days.
+            When remembered, 2FA will be skipped on subsequent logins from this device.
+            Backend creates a remembered device record and sets `rememberedDeviceToken` cookie.
+          example: true
     LoginSuccessResponse:
       type: object
       required: [success, data, message, requestId]
@@ -1087,6 +1145,14 @@ components:
           format: uuid
         code:
           type: string
+        rememberDevice:
+          type: boolean
+          default: false
+          description: |
+            Set to true to remember this device for 30 days after successful 2FA verification.
+            When remembered, 2FA will be skipped on subsequent logins from this device.
+            Backend creates a remembered device record and sets `rememberedDeviceToken` cookie.
+          example: true
     RequestPasswordReset:
       type: object
       required: [email]
