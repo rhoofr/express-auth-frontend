@@ -297,6 +297,7 @@ export function useConfirmEmail(token: string) {
 // Enable 2FA
 export function useEnable2fa() {
   const toast = useToast();
+
   return useMutation<{ success: true; message: string; requestId?: string }, ApiErrorResponse, void>({
     mutationFn: () =>
       request<{ success: true; message: string; requestId?: string }>({
@@ -304,6 +305,14 @@ export function useEnable2fa() {
         method: 'POST',
       }),
     onSuccess: (data) => {
+      // Access store directly without hooks (safe in callbacks)
+      const { user, setUser } = useAuthStore.getState();
+
+      // Update user in store with twoFactorEnabled: true
+      if (user) {
+        setUser({ ...user, twoFactorEnabled: true });
+      }
+
       toast.success(data.message);
     },
     onError: (error) => {
@@ -315,6 +324,7 @@ export function useEnable2fa() {
 // Disable 2FA
 export function useDisable2fa() {
   const toast = useToast();
+
   return useMutation<{ success: true; message: string; requestId?: string }, ApiErrorResponse, void>({
     mutationFn: () =>
       request<{ success: true; message: string; requestId?: string }>({
@@ -322,6 +332,14 @@ export function useDisable2fa() {
         method: 'POST',
       }),
     onSuccess: (data) => {
+      // Access store directly without hooks (safe in callbacks)
+      const { user, setUser } = useAuthStore.getState();
+
+      // Update user in store with twoFactorEnabled: false
+      if (user) {
+        setUser({ ...user, twoFactorEnabled: false });
+      }
+
       toast.success(data.message);
     },
     onError: (error) => {

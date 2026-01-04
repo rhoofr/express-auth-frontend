@@ -55,6 +55,7 @@ export type TwoFactorRequiredResponse = ApiSuccessResponse<{ userId: string }>;
 export interface ConfirmTwoFactorRequest {
   userId: string;
   code: string;
+  rememberDevice?: boolean; // Add optional field for remember device functionality
 }
 
 export interface ResendConfirmationRequest {

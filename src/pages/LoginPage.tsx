@@ -3,19 +3,19 @@
  * Login page with email/password authentication and 2FA support.
  * Uses React Hook Form with Zod validation.
  */
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Controller, useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { useLogin, useConfirm2fa, useResendConfirmation } from '@/hooks/useAuth';
-import { useAuthStore } from '@/store/auth';
-import { Button } from '@/components/ui/button';
+import { z } from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Mail } from 'lucide-react';
-import type { TwoFactorRequiredResponse, ApiErrorResponse } from '@/types/api';
+import { Label } from '@/components/ui/label';
+import { useAuthStore } from '@/store/auth';
+import { useLogin, useConfirm2fa, useResendConfirmation } from '@/hooks/useAuth';
+import type { ApiErrorResponse, TwoFactorRequiredResponse } from '@/types/api';
+import { Mail, ShieldCheck } from 'lucide-react';
 
 // Login form schema
 const loginSchema = z.object({
@@ -46,6 +46,7 @@ export default function LoginPage() {
   // 2FA state
   const [userId, setUserId] = useState<string | null>(null);
   const [requires2FA, setRequires2FA] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(false); // Add state for remember device checkbox
 
   // Email confirmation state
   const [showResendConfirmation, setShowResendConfirmation] = useState(false);
@@ -100,7 +101,7 @@ export default function LoginPage() {
       onError: (error: ApiErrorResponse) => {
         // Check if error is due to unconfirmed email
         if (error.error?.code === 'EMAIL_NOT_CONFIRMED') {
-          setUnconfirmedEmail(data.email);
+          setUnconfirmedEmail(loginForm.getValues('email'));
           setShowResendConfirmation(true);
         }
         // For all other errors (invalid credentials, account locked, etc.),
@@ -118,6 +119,7 @@ export default function LoginPage() {
       {
         userId,
         code: data.code,
+        rememberDevice, // Pass the remember device state to the mutation
       },
       {
         onSuccess: () => {
@@ -150,62 +152,34 @@ export default function LoginPage() {
       <div className='mx-auto max-w-lg space-y-6 px-4'>
         <Card>
           <CardHeader>
-            <CardTitle className='text-2xl'>Email Confirmation Required</CardTitle>
+            <div className='flex items-center gap-2'>
+              <Mail className='size-5 text-yellow-500' />
+              <CardTitle>Email Confirmation Required</CardTitle>
+            </div>
             <CardDescription>
-              Your email address has not been confirmed yet. Please check your inbox for the confirmation link.
+              Your email address has not been confirmed. Please check your inbox for a confirmation email.
             </CardDescription>
           </CardHeader>
-
-          <CardContent className='space-y-6'>
-            <div className='rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-4'>
-              <div className='flex gap-3'>
-                <Mail className='size-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5' />
-                <div className='space-y-2 flex-1'>
-                  <p className='text-sm font-medium text-blue-900 dark:text-blue-100'>
-                    We sent a confirmation email to:
-                  </p>
-                  <p className='text-sm font-semibold text-blue-700 dark:text-blue-300'>{unconfirmedEmail}</p>
-                  <p className='text-sm text-blue-800 dark:text-blue-200'>
-                    Click the link in the email to confirm your account and log in.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className='space-y-3'>
+          <CardContent className='space-y-4'>
+            <p className='text-sm text-muted-foreground'>
+              Didn't receive the email? Click the button below to send a new confirmation email to{' '}
+              <span className='font-medium'>{unconfirmedEmail}</span>.
+            </p>
+            <div className='flex gap-2'>
               <Button
-                type='button'
-                className='w-full'
-                variant='default'
                 onClick={handleResendConfirmation}
-                disabled={resendConfirmationMutation.isPending}>
-                {resendConfirmationMutation.isPending ? (
-                  <>
-                    <Loader2 className='size-4 mr-2 animate-spin' />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Mail className='size-4 mr-2' />
-                    Resend Confirmation Email
-                  </>
-                )}
+                disabled={resendConfirmationMutation.isPending}
+                className='flex-1'>
+                {resendConfirmationMutation.isPending ? 'Sending...' : 'Resend Confirmation Email'}
               </Button>
-
               <Button
-                type='button'
                 variant='outline'
-                className='w-full'
                 onClick={() => {
                   setShowResendConfirmation(false);
                   setUnconfirmedEmail(null);
                 }}>
                 Back to Login
               </Button>
-            </div>
-
-            <div className='text-center text-sm text-muted-foreground'>
-              <p>Didn't receive the email? Check your spam folder or try resending.</p>
             </div>
           </CardContent>
         </Card>
@@ -219,59 +193,60 @@ export default function LoginPage() {
       <div className='mx-auto max-w-lg space-y-6 px-4'>
         <Card>
           <CardHeader>
-            <CardTitle className='text-2xl'>Two-Factor Authentication</CardTitle>
-            <CardDescription>Enter the verification code sent to your email</CardDescription>
+            <div className='flex items-center gap-2'>
+              <ShieldCheck className='size-5 text-primary' />
+              <CardTitle>Two-Factor Authentication</CardTitle>
+            </div>
+            <CardDescription>Enter the 6-digit code sent to your email address</CardDescription>
           </CardHeader>
-
           <CardContent>
-            <form className='space-y-6' onSubmit={twoFactorForm.handleSubmit(handleConfirm2FA)}>
-              <FieldGroup>
-                <Field data-invalid={!!twoFactorForm.formState.errors.code}>
-                  <FieldLabel htmlFor='2fa-code'>Verification Code</FieldLabel>
-                  <Input
-                    {...twoFactorForm.register('code')}
-                    id='2fa-code'
-                    type='text'
-                    inputMode='numeric'
-                    pattern='[0-9]*'
-                    placeholder='Enter 6-digit code'
-                    aria-invalid={!!twoFactorForm.formState.errors.code}
-                    disabled={confirm2faMutation.isPending}
-                    autoComplete='one-time-code'
-                    autoFocus
-                  />
-                  {twoFactorForm.formState.errors.code && <FieldError errors={[twoFactorForm.formState.errors.code]} />}
-                </Field>
-              </FieldGroup>
-
-              <div className='space-y-3'>
-                <Button
-                  type='submit'
-                  className='w-full'
-                  disabled={confirm2faMutation.isPending || !twoFactorForm.formState.isValid}>
-                  {confirm2faMutation.isPending ? (
-                    <>
-                      <Loader2 className='size-4 mr-2 animate-spin' />
-                      Verifying...
-                    </>
-                  ) : (
-                    'Verify Code'
-                  )}
-                </Button>
-
-                <div className='text-center'>
-                  <button
-                    type='button'
-                    className='text-sm text-primary hover:underline'
-                    onClick={() => {
-                      setRequires2FA(false);
-                      setUserId(null);
-                      twoFactorForm.reset();
-                    }}>
-                    Back to login
-                  </button>
-                </div>
+            <form onSubmit={twoFactorForm.handleSubmit(handleConfirm2FA)} className='space-y-4'>
+              <div className='space-y-2'>
+                <Label htmlFor='code'>Verification Code</Label>
+                <Input
+                  id='code'
+                  type='text'
+                  maxLength={6}
+                  {...twoFactorForm.register('code')}
+                  disabled={confirm2faMutation.isPending}
+                  className='text-center text-2xl tracking-widest'
+                />
+                {twoFactorForm.formState.errors.code && (
+                  <p className='text-sm text-red-500'>{twoFactorForm.formState.errors.code.message}</p>
+                )}
               </div>
+
+              {/* Remember Device Checkbox */}
+              <div className='flex items-center space-x-2 rounded-md border p-3 bg-muted/50'>
+                <input
+                  type='checkbox'
+                  id='remember-device'
+                  checked={rememberDevice}
+                  onChange={(e) => setRememberDevice(e.target.checked)}
+                  disabled={confirm2faMutation.isPending}
+                  className='size-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+                />
+                <label htmlFor='remember-device' className='text-sm text-muted-foreground cursor-pointer select-none'>
+                  Remember device (30 days)
+                </label>
+              </div>
+
+              <Button type='submit' className='w-full' disabled={confirm2faMutation.isPending}>
+                {confirm2faMutation.isPending ? 'Verifying...' : 'Verify Code'}
+              </Button>
+
+              <Button
+                type='button'
+                variant='outline'
+                className='w-full'
+                onClick={() => {
+                  setRequires2FA(false);
+                  setUserId(null);
+                  setRememberDevice(false); // Reset remember device state when going back
+                  twoFactorForm.reset();
+                }}>
+                Back to Login
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -284,79 +259,55 @@ export default function LoginPage() {
     <div className='mx-auto max-w-lg space-y-6 px-4'>
       <Card>
         <CardHeader>
-          <CardTitle className='text-2xl'>Sign in to your account</CardTitle>
+          <CardTitle>Login</CardTitle>
           <CardDescription>Enter your credentials to access your account</CardDescription>
         </CardHeader>
-
         <CardContent>
-          <form className='space-y-6' onSubmit={loginForm.handleSubmit(handleLogin)}>
-            <FieldGroup>
-              <Controller
-                name='email'
-                control={loginForm.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor='login-email'>Email address</FieldLabel>
-                    <Input
-                      {...field}
-                      id='login-email'
-                      type='email'
-                      placeholder='Enter your email'
-                      aria-invalid={fieldState.invalid}
-                      disabled={loginMutation.isPending}
-                      autoComplete='email'
-                      autoFocus
-                    />
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
+          <form onSubmit={loginForm.handleSubmit(handleLogin)} className='space-y-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='email'>Email</Label>
+              <Input
+                id='email'
+                type='email'
+                placeholder='user@example.com'
+                {...loginForm.register('email')}
+                disabled={loginMutation.isPending}
               />
-
-              <Controller
-                name='password'
-                control={loginForm.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor='login-password'>Password</FieldLabel>
-                    <Input
-                      {...field}
-                      id='login-password'
-                      type='password'
-                      placeholder='Enter your password'
-                      aria-invalid={fieldState.invalid}
-                      disabled={loginMutation.isPending}
-                      autoComplete='current-password'
-                    />
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-            </FieldGroup>
-
-            <div className='space-y-4'>
-              <Button
-                type='submit'
-                className='w-full'
-                disabled={loginMutation.isPending || !loginForm.formState.isValid}>
-                {loginMutation.isPending ? (
-                  <>
-                    <Loader2 className='size-4 mr-2 animate-spin' />
-                    Signing in...
-                  </>
-                ) : (
-                  'Sign in'
-                )}
-              </Button>
-
-              <div className='flex items-center justify-between text-sm'>
-                <a href='/forgot-password' className='text-primary hover:underline'>
-                  Forgot password?
-                </a>
-                <a href='/register' className='text-primary hover:underline'>
-                  Create account
-                </a>
-              </div>
+              {loginForm.formState.errors.email && (
+                <p className='text-sm text-red-500'>{loginForm.formState.errors.email.message}</p>
+              )}
             </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='password'>Password</Label>
+              <Input
+                id='password'
+                type='password'
+                placeholder='••••••••'
+                {...loginForm.register('password')}
+                disabled={loginMutation.isPending}
+              />
+              {loginForm.formState.errors.password && (
+                <p className='text-sm text-red-500'>{loginForm.formState.errors.password.message}</p>
+              )}
+            </div>
+
+            <div className='flex items-center justify-end'>
+              <Link to='/forgot-password' className='text-sm text-primary hover:underline'>
+                Forgot password?
+              </Link>
+            </div>
+
+            <Button type='submit' className='w-full' disabled={loginMutation.isPending}>
+              {loginMutation.isPending ? 'Logging in...' : 'Login'}
+            </Button>
+
+            <p className='text-center text-sm text-muted-foreground'>
+              Don't have an account?{' '}
+              <Link to='/register' className='text-primary hover:underline'>
+                Sign up
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>
