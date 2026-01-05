@@ -22,6 +22,7 @@ import SettingsPage from '@/pages/SettingsPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import ChangePasswordPage from '@/pages/ChangePasswordPage';
+import UsersPage from '@/pages/UsersPage';
 
 const routes = [
   { path: '/', label: 'Home', protected: false },
@@ -86,6 +87,14 @@ function App() {
           />
 
           {/* Admin Routes - Require Authentication + Admin Role */}
+          <Route
+            path='/users'
+            element={
+              <AdminRoute>
+                <UsersPage />
+              </AdminRoute>
+            }
+          />
           <Route
             path='/messages/new'
             element={

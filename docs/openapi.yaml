@@ -973,6 +973,248 @@ paths:
           $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
+  /api/v1/auth/users:
+    get:
+      operationId: listUsers
+      summary: List all users (admin only)
+      tags: [Auth]
+      security:
+        - cookieAuth: []
+      description: |
+        Returns list of all users except the requesting admin.
+        Sorted by role (admin first), then by full_name alphabetically.
+
+        **Admin-only endpoint:** Requires valid access token with admin role.
+
+        **Middleware chain:**
+        1. authenticate - Verifies access token
+        2. requireAdmin - Verifies user has admin role
+        3. validate(listUsersQuerySchema, 'query') - Validates query params (empty for now)
+        4. authController.listUsers - Processes request
+
+        **Sorting:**
+        - Primary: role (admin before user)
+        - Secondary: full_name (alphabetical)
+
+        **Exclusions:**
+        - Requesting admin is excluded from results
+
+        **Future enhancements:**
+        - Pagination: ?limit=50&offset=100
+        - Filtering: ?role=admin
+        - Search: ?email=john@example.com
+      parameters: []
+      responses:
+        '200':
+          description: User list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: User's unique identifier
+                        email:
+                          type: string
+                          format: email
+                          description: User's email address
+                        full_name:
+                          type: string
+                          nullable: true
+                          description: User's full name
+                        role:
+                          type: string
+                          enum: [user, admin]
+                          description: User's role
+                  count:
+                    type: integer
+                    description: Total number of users returned
+                  message:
+                    type: string
+                    example: Users retrieved successfully
+                  requestId:
+                    type: string
+              example:
+                success: true
+                data:
+                  - id: '550e8400-e29b-41d4-a716-446655440000'
+                    email: 'user@example.com'
+                    full_name: 'John Doe'
+                    role: 'user'
+                  - id: '660e8400-e29b-41d4-a716-446655440001'
+                    email: 'admin2@example.com'
+                    full_name: 'Jane Admin'
+                    role: 'admin'
+                count: 2
+                message: 'Users retrieved successfully'
+                requestId: 'req-users-001'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          description: Forbidden - User is not admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  message: 'Forbidden: Insufficient permissions'
+                  code: 'PERMISSION_DENIED'
+                  statusCode: 403
+                  requestId: 'req-users-err001'
+
+  /api/v1/auth/users/role:
+    put:
+      operationId: updateUserRole
+      summary: Update user role (admin only)
+      tags: [Auth]
+      security:
+        - cookieAuth: []
+      description: |
+        Updates the role of a specified user. Admin-only endpoint for user management.
+
+        **Admin-only endpoint:** Requires valid access token with admin role.
+
+        **Middleware chain:**
+        1. authenticate - Verifies access token
+        2. requireAdmin - Verifies user has admin role
+        3. validate(updateUserRoleSchema) - Validates request body
+        4. authController.updateUserRole - Processes role update
+
+        **Security features:**
+        - Prevents admins from demoting themselves (cannot change own role from admin to user)
+        - Validates role values ('user' or 'admin' only)
+        - Logs role changes with requesting admin's ID for audit trail
+
+        **Use case:**
+        - Admin user management interface
+        - Promoting users to admin role
+        - Demoting admins to user role (cannot demote self)
+
+        **After role update:**
+        - User's role is immediately updated in database
+        - User's existing sessions remain valid (no logout required)
+        - New permissions apply on next authenticated request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, role]
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                  description: UUID of user whose role should be updated
+                role:
+                  type: string
+                  enum: [user, admin]
+                  description: New role to assign to user
+            example:
+              userId: '550e8400-e29b-41d4-a716-446655440000'
+              role: 'admin'
+      responses:
+        '200':
+          description: User role updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      email:
+                        type: string
+                        format: email
+                      full_name:
+                        type: string
+                        nullable: true
+                      role:
+                        type: string
+                        enum: [user, admin]
+                  message:
+                    type: string
+                    example: User role updated successfully
+                  requestId:
+                    type: string
+              example:
+                success: true
+                data:
+                  id: '550e8400-e29b-41d4-a716-446655440000'
+                  email: 'user@example.com'
+                  full_name: 'John Doe'
+                  role: 'admin'
+                message: 'User role updated successfully'
+                requestId: 'req-role-update-001'
+        '400':
+          description: Bad request - Cannot demote self or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                cannot-demote-self:
+                  summary: Admin trying to demote themselves
+                  value:
+                    success: false
+                    error:
+                      message: 'Cannot demote yourself from admin role'
+                      code: 'VALIDATION_ERROR'
+                      statusCode: 400
+                      requestId: 'req-role-err001'
+                validation-error:
+                  summary: Invalid role value
+                  value:
+                    success: false
+                    error:
+                      name: 'ValidationError'
+                      message: 'Validation failed'
+                      statusCode: 400
+                      code: 'VALIDATION_ERROR'
+                      details:
+                        - field: 'role'
+                          message: 'Invalid role. Must be "user" or "admin"'
+                      requestId: 'req-role-err002'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          description: Forbidden - User is not admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  message: 'User not found'
+                  code: 'RESOURCE_NOT_FOUND'
+                  statusCode: 404
+                  requestId: 'req-role-err003'
 components:
   securitySchemes:
     cookieAuth:

@@ -2,7 +2,7 @@
  * @module hooks/useAuth
  * React Query hooks for authentication endpoints, with react-hot-toast integration.
  */
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { request } from '@/lib/api';
 import { useToast } from '@/hooks/useToast';
 import { useQueryErrorToast } from '@/hooks/useQueryErrorToast';
@@ -21,6 +21,9 @@ import type {
   ChangePasswordRequest,
   ValidateResetTokenResponse,
   SessionsResponse,
+  UsersListResponse,
+  UpdateUserRoleRequest,
+  UpdateUserRoleResponse,
 } from '@/types/api';
 
 const BASE = API_ENDPOINTS.AUTH;
@@ -341,6 +344,43 @@ export function useDisable2fa() {
       }
 
       toast.success(data.message);
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
+    },
+  });
+}
+
+// List all users (admin only)
+export function useListUsers() {
+  const query = useQuery<UsersListResponse, ApiErrorResponse>({
+    queryKey: ['users'],
+    queryFn: () =>
+      request<UsersListResponse>({
+        url: `${BASE}/users`,
+        method: 'GET',
+      }),
+  });
+  useQueryErrorToast(query.error);
+  return query;
+}
+
+// Update user role (admin only)
+export function useUpdateUserRole() {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation<UpdateUserRoleResponse, ApiErrorResponse, UpdateUserRoleRequest>({
+    mutationFn: (data) =>
+      request<UpdateUserRoleResponse>({
+        url: `${BASE}/users/role`,
+        method: 'PUT',
+        data,
+      }),
+    onSuccess: (data) => {
+      toast.success(data.message);
+      // Invalidate users list to refetch with updated data
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (error) => {
       toast.error(getErrorMessage(error));

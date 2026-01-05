@@ -1282,6 +1282,92 @@ All user-facing and operational messages are managed via the message service. **
 
 ---
 
+## Admin User Management Endpoints
+
+### List All Users (Admin Only)
+
+**Endpoint:** `GET /api/v1/auth/users`
+
+**Authentication:** Required (admin role)
+
+**Description:**
+
+- Returns a list of all users except the requesting admin.
+- Sorted by role (`admin` first), then by `full_name` alphabetically.
+- Used for admin user management interfaces.
+
+**Success Response (200):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "email": "user@example.com",
+      "full_name": "John Doe",
+      "role": "user"
+    },
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440001",
+      "email": "admin@example.com",
+      "full_name": "Jane Admin",
+      "role": "admin"
+    }
+  ],
+  "count": 2,
+  "message": "Users retrieved successfully",
+  "requestId": "req-users-001"
+}
+```
+
+**Common Errors:**
+
+- 401 Unauthorized: Not authenticated
+- 403 Forbidden: Not admin
+
+---
+
+### Update User Role (Admin Only)
+
+**Endpoint:** `PUT /api/v1/auth/users/role`
+
+**Authentication:** Required (admin role)
+
+**Request Body:**
+
+```json
+{
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "role": "admin"
+}
+```
+
+**Success Response (200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "user@example.com",
+    "full_name": "John Doe",
+    "role": "admin"
+  },
+  "message": "User role updated successfully",
+  "status": 200
+}
+```
+
+**Common Errors:**
+
+- 400 Bad Request: Admin attempting to demote themselves
+- 401 Unauthorized: Not authenticated
+- 403 Forbidden: Not admin
+- 404 Not Found: User not found
+
+---
+
 ## Common Error Codes
 
 Frontend developers can use the `error.code` field for programmatic error handling.

@@ -155,3 +155,32 @@ export interface MetricsData {
 }
 
 export type MetricsResponse = ApiSuccessResponse<MetricsData>;
+
+// --- User Management Types (Admin) ---
+
+export interface User {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: 'user' | 'admin';
+}
+
+export interface UsersListResponse {
+  success: true;
+  data: User[];
+  count: number;
+  message: string;
+  requestId?: string;
+}
+
+export interface UpdateUserRoleRequest {
+  userId: string;
+  role: 'user' | 'admin';
+}
+
+export interface UpdateUserRoleResponse {
+  success: true;
+  data: User;
+  message: string;
+  requestId?: string;
+}

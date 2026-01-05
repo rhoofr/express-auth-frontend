@@ -27,6 +27,7 @@ export function Navbar({ routes, theme, setTheme }: NavbarProps) {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAdmin = user?.role === 'admin';
   const logoutMutation = useLogout();
   const logoutAllMutation = useLogoutAll();
 
@@ -70,6 +71,18 @@ export function Navbar({ routes, theme, setTheme }: NavbarProps) {
               </Link>
             </li>
           ))}
+          {/* Admin-only Users link */}
+          {isAdmin && (
+            <li>
+              <Link
+                to='/users'
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  location.pathname === '/users' ? 'text-primary' : 'text-gray-600 dark:text-gray-400'
+                }`}>
+                Users
+              </Link>
+            </li>
+          )}
         </ul>
       </div>
 
