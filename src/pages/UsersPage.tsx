@@ -2,17 +2,15 @@
  * @module pages/UsersPage
  * Admin-only page for managing user roles.
  * Displays list of all users with ability to promote/demote between user and admin roles.
+ * Uses TanStack Table for efficient, compact display.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useListUsers, useUpdateUserRole } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/auth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { SearchBar } from '@/components/SearchBar';
-import { UserRoleDialog } from '@/components/UserRoleDialog';
-import { Loader2, Users, ShieldCheck, User as UserIcon, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
-import type { User } from '@/types/api';
+import { DataTable } from '@/components/DataTable';
+import { Loader2, Users } from 'lucide-react';
+import { createColumns } from './UsersPage.columns';
 
 export default function UsersPage() {
   const currentUser = useAuthStore((state) => state.user);
@@ -26,7 +24,26 @@ export default function UsersPage() {
   const allUsers = useMemo(() => data?.data || [], [data?.data]);
   const totalCount = data?.count || 0;
 
-  // Filter users based on search query
+  // Handle role change - wrapped in useCallback to stabilize reference
+  const handleRoleChange = useCallback(
+    (userId: string, newRole: 'user' | 'admin') => {
+      updateRoleMutation.mutate({ userId, role: newRole });
+    },
+    [updateRoleMutation]
+  );
+
+  // Create columns with context
+  const columns = useMemo(
+    () =>
+      createColumns({
+        currentUserId: currentUser?.id,
+        onRoleChange: handleRoleChange,
+        isUpdating: updateRoleMutation.isPending,
+      }),
+    [currentUser?.id, handleRoleChange, updateRoleMutation.isPending]
+  );
+
+  // Filter users based on search query (client-side for all fields)
   const filteredUsers = useMemo(() => {
     if (!searchQuery.trim()) {
       return allUsers;
@@ -45,90 +62,6 @@ export default function UsersPage() {
   const filteredCount = filteredUsers.length;
   const isSearchActive = searchQuery.trim().length > 0;
 
-  // Handle role change
-  const handleRoleChange = (userId: string, newRole: 'user' | 'admin') => {
-    updateRoleMutation.mutate({ userId, role: newRole });
-  };
-
-  // Render user card
-  const renderUserCard = (user: User) => {
-    const isCurrentUser = currentUser?.id === user.id;
-    const isAdmin = user.role === 'admin';
-    const canChangeRole = !isCurrentUser; // Can't change own role
-
-    return (
-      <Card key={user.id} className='hover:shadow-md transition-shadow'>
-        <CardContent className='p-6'>
-          <div className='flex items-start justify-between gap-4'>
-            {/* User Info */}
-            <div className='flex items-start gap-4 flex-1 min-w-0'>
-              {/* Avatar */}
-              <div
-                className={`size-12 rounded-full flex items-center justify-center shrink-0 ${
-                  isAdmin ? 'bg-primary/10' : 'bg-muted'
-                }`}>
-                {isAdmin ? (
-                  <ShieldCheck className='size-6 text-primary' />
-                ) : (
-                  <UserIcon className='size-6 text-muted-foreground' />
-                )}
-              </div>
-
-              {/* Details */}
-              <div className='flex-1 min-w-0 space-y-2'>
-                <div className='flex items-center gap-2 flex-wrap'>
-                  <h3 className='font-semibold text-lg truncate'>{user.full_name || 'No name'}</h3>
-                  {isCurrentUser && (
-                    <Badge variant='outline' className='text-xs'>
-                      You
-                    </Badge>
-                  )}
-                </div>
-                <p className='text-sm text-muted-foreground truncate'>{user.email}</p>
-                <Badge variant={isAdmin ? 'default' : 'secondary'} className='text-xs capitalize'>
-                  {user.role}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Actions */}
-            {canChangeRole && (
-              <div className='flex gap-2 shrink-0'>
-                {isAdmin ? (
-                  <UserRoleDialog
-                    trigger={
-                      <Button variant='outline' size='sm' disabled={updateRoleMutation.isPending}>
-                        <ArrowDownCircle className='size-4 mr-2' />
-                        Demote to User
-                      </Button>
-                    }
-                    user={user}
-                    newRole='user'
-                    onConfirm={handleRoleChange}
-                    isLoading={updateRoleMutation.isPending}
-                  />
-                ) : (
-                  <UserRoleDialog
-                    trigger={
-                      <Button variant='default' size='sm' disabled={updateRoleMutation.isPending}>
-                        <ArrowUpCircle className='size-4 mr-2' />
-                        Promote to Admin
-                      </Button>
-                    }
-                    user={user}
-                    newRole='admin'
-                    onConfirm={handleRoleChange}
-                    isLoading={updateRoleMutation.isPending}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
   // Loading state
   if (isLoading) {
     return (
@@ -141,7 +74,7 @@ export default function UsersPage() {
   return (
     <div className='space-y-6'>
       {/* Header Section */}
-      <div>
+      <div className='mb-2'>
         <div className='flex items-center gap-3 mb-2'>
           <Users className='size-8 text-primary' />
           <h1 className='text-3xl font-bold'>User Management</h1>
@@ -167,28 +100,8 @@ export default function UsersPage() {
         className='max-w-md'
       />
 
-      {/* Users List */}
-      <div className='grid gap-4'>
-        {filteredUsers.length === 0 ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>No Users Found</CardTitle>
-              <CardDescription>
-                {isSearchActive ? `No users found matching "${searchQuery}".` : 'No users available in the system.'}
-              </CardDescription>
-            </CardHeader>
-            {isSearchActive && (
-              <CardContent>
-                <Button variant='outline' onClick={() => setSearchQuery('')}>
-                  Clear Search
-                </Button>
-              </CardContent>
-            )}
-          </Card>
-        ) : (
-          filteredUsers.map(renderUserCard)
-        )}
-      </div>
+      {/* Users Data Table */}
+      <DataTable columns={columns} data={filteredUsers} searchColumn='email' searchValue={searchQuery} pageSize={9} />
     </div>
   );
 }
