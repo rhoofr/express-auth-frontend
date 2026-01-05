@@ -29,6 +29,8 @@ interface DataTableProps<TData, TValue> {
   onSearchChange?: (value: string) => void;
   /** Number of rows to display per page (default: 10) */
   pageSize?: number;
+  /** Optional: handle double-click on row */
+  onRowDoubleClick?: (row: TData) => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -37,6 +39,7 @@ export function DataTable<TData, TValue>({
   searchColumn,
   searchValue,
   pageSize = 10,
+  onRowDoubleClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -75,13 +78,14 @@ export function DataTable<TData, TValue>({
   return (
     <div className='space-y-4'>
       <div className='overflow-hidden rounded-md border'>
-        <Table>
+        <Table className='table-fixed w-full'>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
+                  const width = header.column.columnDef.meta?.width as string | undefined;
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead key={header.id} style={width ? { width } : undefined}>
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   );
@@ -92,10 +96,19 @@ export function DataTable<TData, TValue>({
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                  ))}
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && 'selected'}
+                  onDoubleClick={onRowDoubleClick ? () => onRowDoubleClick(row.original) : undefined}
+                  className={onRowDoubleClick ? 'cursor-pointer select-none' : undefined}>
+                  {row.getVisibleCells().map((cell) => {
+                    const width = cell.column.columnDef.meta?.width as string | undefined;
+                    return (
+                      <TableCell key={cell.id} style={width ? { width } : undefined}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))
             ) : (

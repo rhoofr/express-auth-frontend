@@ -1,21 +1,23 @@
 /**
  * @module pages/MessagesPage
- * List all messages (authenticated users).
+ * List all messages (authenticated users) in a compact data table.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMessages } from '@/hooks/useMessages';
+import { useMessages, useDeleteMessage } from '@/hooks/useMessages';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 import { Plus, Loader2 } from 'lucide-react';
-import { MessageItem } from '@/components/MessageItem';
 import { SearchBar } from '@/components/SearchBar';
+import { DataTable } from '@/components/DataTable';
+import { createMessageColumns } from './MessagesPage.columns';
 
 export default function MessagesPage() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
   const { data, isLoading } = useMessages();
+  const deleteMessage = useDeleteMessage();
 
   // Local state for search query
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,9 +31,7 @@ export default function MessagesPage() {
     if (!searchQuery.trim()) {
       return allMessages;
     }
-
     const query = searchQuery.toLowerCase().trim();
-
     return allMessages.filter((message) => {
       const keyMatch = message.key.toLowerCase().includes(query);
       const valueMatch = message.value.toLowerCase().includes(query);
@@ -41,6 +41,43 @@ export default function MessagesPage() {
 
   const filteredCount = filteredMessages.length;
   const isSearchActive = searchQuery.trim().length > 0;
+
+  // Handlers for edit/delete
+  const handleEdit = useCallback(
+    (id: string) => {
+      navigate(`/messages/${id}/edit`);
+    },
+    [navigate]
+  );
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      deleteMessage.mutate(id);
+    },
+    [deleteMessage]
+  );
+
+  const isDeleting = useCallback(
+    (id: string) => deleteMessage.variables === id && deleteMessage.isPending,
+    [deleteMessage.variables, deleteMessage.isPending]
+  );
+
+  // Columns for DataTable
+  const columns = useMemo(
+    () =>
+      createMessageColumns({
+        isAdmin,
+        onEdit: handleEdit,
+        onDelete: handleDelete,
+        isDeleting,
+      }),
+    [isAdmin, handleEdit, handleDelete, isDeleting]
+  );
+
+  // Handler for double-clicking a row
+  const handleRowDoubleClick = (message: Message) => {
+    navigate(`/messages/${message.id}`);
+  };
 
   // Loading state check AFTER all hooks
   if (isLoading) {
@@ -54,7 +91,7 @@ export default function MessagesPage() {
   return (
     <div className='space-y-6'>
       {/* Header Section */}
-      <div className='flex items-start justify-between gap-4'>
+      <div className='flex items-start justify-between gap-4 mb-2'>
         <div className='flex-1 min-w-0'>
           <h1 className='text-3xl font-bold'>Messages</h1>
           <p className='text-sm text-muted-foreground mt-1'>
@@ -85,32 +122,15 @@ export default function MessagesPage() {
         className='max-w-md'
       />
 
-      {/* Messages List */}
-      <div className='grid gap-3'>
-        {filteredMessages.length === 0 ? (
-          <div className='text-center py-12 border border-dashed border-border rounded-lg'>
-            {isSearchActive ? (
-              <>
-                <p className='text-muted-foreground'>No messages found matching "{searchQuery}".</p>
-                <Button variant='outline' className='mt-4' onClick={() => setSearchQuery('')}>
-                  Clear search
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className='text-muted-foreground'>No messages found.</p>
-                {isAdmin && (
-                  <Button variant='outline' className='mt-4' onClick={() => navigate('/messages/new')}>
-                    Create your first message
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
-        ) : (
-          filteredMessages.map((message) => <MessageItem key={message.id} message={message} isAdmin={isAdmin} />)
-        )}
-      </div>
+      {/* Messages Data Table */}
+      <DataTable
+        columns={columns}
+        data={filteredMessages}
+        searchColumn='key'
+        searchValue={searchQuery}
+        pageSize={9}
+        onRowDoubleClick={handleRowDoubleClick}
+      />
     </div>
   );
 }
