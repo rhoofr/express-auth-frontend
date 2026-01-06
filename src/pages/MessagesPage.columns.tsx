@@ -23,6 +23,12 @@ export function createMessageColumns(ctx: ColumnContext): ColumnDef<Message>[] {
       header: 'Key',
       cell: ({ row }) => <span className='font-mono'>{row.original.key}</span>,
       meta: { width: '35%' },
+      filterFn: (row, _columnId, filterValue) => {
+        const query = String(filterValue).toLowerCase().trim();
+        const key = row.original.key.toLowerCase();
+        const value = row.original.value?.toLowerCase() || '';
+        return key.includes(query) || value.includes(query);
+      },
     },
     {
       accessorKey: 'type',

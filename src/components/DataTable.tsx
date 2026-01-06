@@ -83,7 +83,7 @@ export function DataTable<TData, TValue>({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
-                  const width = header.column.columnDef.meta?.width as string | undefined;
+                  const width = (header.column.columnDef.meta as { width?: string } | undefined)?.width;
                   return (
                     <TableHead key={header.id} style={width ? { width } : undefined}>
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
@@ -102,7 +102,7 @@ export function DataTable<TData, TValue>({
                   onDoubleClick={onRowDoubleClick ? () => onRowDoubleClick(row.original) : undefined}
                   className={onRowDoubleClick ? 'cursor-pointer select-none' : undefined}>
                   {row.getVisibleCells().map((cell) => {
-                    const width = cell.column.columnDef.meta?.width as string | undefined;
+                    const width = (cell.column.columnDef.meta as { width?: string } | undefined)?.width;
                     return (
                       <TableCell key={cell.id} style={width ? { width } : undefined}>
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

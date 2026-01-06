@@ -45,6 +45,13 @@ export function createColumns(context: ColumnContext): ColumnDef<User>[] {
           </div>
         );
       },
+      filterFn: (row, _columnId, filterValue) => {
+        const query = String(filterValue).toLowerCase().trim();
+        const email = row.original.email.toLowerCase();
+        const name = row.original.full_name?.toLowerCase() || '';
+        const role = row.original.role.toLowerCase();
+        return email.includes(query) || name.includes(query) || role.includes(query);
+      },
     },
     {
       accessorKey: 'full_name',
