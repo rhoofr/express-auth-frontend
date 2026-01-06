@@ -103,6 +103,8 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '409':
           $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
   /api/v1/auth/confirm-email:
     get:
       operationId: confirmEmail
@@ -160,6 +162,8 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '404':
           $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
   /api/v1/auth/login:
     post:
       operationId: loginUser
@@ -237,6 +241,8 @@ paths:
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
   /api/v1/auth/confirm-2fa:
     post:
       operationId: confirm2fa
@@ -290,6 +296,8 @@ paths:
           $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
   /api/v1/auth/refresh:
     post:
       operationId: refreshToken
@@ -472,11 +480,7 @@ paths:
         '400':
           $ref: '#/components/responses/ValidationError'
         '429':
-          description: Rate limit exceeded (too many pending reset tokens)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/RateLimitError'
   /api/v1/auth/validate-reset-token:
     get:
       operationId: validateResetToken
@@ -1237,6 +1241,22 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ValidationErrorResponse'
+    RateLimitError:
+      description: Too many requests (rate limit exceeded)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              message: 'Too many requests. Retry after 59 seconds.'
+              code: 'RATE_LIMIT_EXCEEDED'
+              statusCode: 429
+              details:
+                retryAfterSeconds: 59
+              requestId: 'req-uuid-123'
+
   schemas:
     GenericSuccess:
       type: object

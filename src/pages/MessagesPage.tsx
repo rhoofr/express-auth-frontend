@@ -128,7 +128,7 @@ export default function MessagesPage() {
         data={filteredMessages}
         searchColumn='key'
         searchValue={searchQuery}
-        pageSize={9}
+        pageSize={10}
         onRowDoubleClick={handleRowDoubleClick}
       />
     </div>
