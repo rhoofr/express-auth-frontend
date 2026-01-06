@@ -21,6 +21,7 @@ export const PUBLIC_ENDPOINTS = [
   '/api/v1/auth/request-password-reset',
   '/api/v1/auth/validate-reset-token',
   '/api/v1/auth/reset-password',
+  '/api/v1/auth/confirm-2fa',
 ] as const;
 
 /**

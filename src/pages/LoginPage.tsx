@@ -46,7 +46,7 @@ export default function LoginPage() {
   // 2FA state
   const [userId, setUserId] = useState<string | null>(null);
   const [requires2FA, setRequires2FA] = useState(false);
-  const [rememberDevice, setRememberDevice] = useState(false); // Add state for remember device checkbox
+  const [rememberDevice, setRememberDevice] = useState(false);
 
   // Email confirmation state
   const [showResendConfirmation, setShowResendConfirmation] = useState(false);
@@ -60,6 +60,7 @@ export default function LoginPage() {
   // Login form
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    // NOTE: Default values for easier testing; remove or modify in production
     defaultValues: {
       email: 'user@email.com',
       password: 'SecurePass123!',
@@ -80,6 +81,14 @@ export default function LoginPage() {
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, navigate, from]);
+
+  // Focus code input when 2FA form is shown
+  useEffect(() => {
+    if (requires2FA) {
+      // Use React Hook Form's setFocus method
+      twoFactorForm.setFocus('code');
+    }
+  }, [requires2FA, twoFactorForm]);
 
   // Handle login submission
   const handleLogin = (data: LoginFormData) => {
@@ -119,12 +128,20 @@ export default function LoginPage() {
       {
         userId,
         code: data.code,
-        rememberDevice, // Pass the remember device state to the mutation
+        rememberDevice,
       },
       {
         onSuccess: () => {
           // 2FA verified, redirect to original page
           navigate(from, { replace: true });
+        },
+        onError: () => {
+          // Error is already displayed by toast in useConfirm2fa hook
+          // Clear the code input so user can try again
+          twoFactorForm.reset({ code: '' });
+          // Keep user on 2FA form by not changing requires2FA state
+          // Re-focus the input for better UX
+          twoFactorForm.setFocus('code');
         },
       }
     );
@@ -217,7 +234,7 @@ export default function LoginPage() {
               </div>
 
               {/* Remember Device Checkbox */}
-              <div className='flex items-center space-x-2 rounded-md border p-3 bg-muted/50'>
+              <div className='flex items-center space-x-2 p-3'>
                 <input
                   type='checkbox'
                   id='remember-device'
@@ -242,8 +259,10 @@ export default function LoginPage() {
                 onClick={() => {
                   setRequires2FA(false);
                   setUserId(null);
-                  setRememberDevice(false); // Reset remember device state when going back
+                  setRememberDevice(false);
                   twoFactorForm.reset();
+                  loginMutation.reset();
+                  loginForm.reset({ email: '', password: '' });
                 }}>
                 Back to Login
               </Button>
