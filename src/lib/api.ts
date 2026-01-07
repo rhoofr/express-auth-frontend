@@ -90,9 +90,9 @@ api.interceptors.response.use(
           isRefreshing = false;
           refreshSubscribers = [];
 
-          // Clear auth state (import dynamically to avoid circular dependency)
-          const { useAuthStore } = await import('@/store/auth');
-          useAuthStore.getState().clearUser();
+          // Clear auth state from localStorage
+          // Zustand's persist middleware will automatically sync this change
+          localStorage.removeItem('auth-storage');
 
           // Redirect to login page
           window.location.href = '/login';

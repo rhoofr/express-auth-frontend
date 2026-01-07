@@ -408,6 +408,16 @@ VITE_API_BASE_URL=https://api.yourdomain.com
 4. Configure environment variables
 5. Deploy
 
+### Render
+
+1. Push your code to GitHub
+2. Create a new Static Site in Render dashboard
+3. Connect your repository
+4. Set build command: `npm run build`
+5. Set publish directory: `dist`
+6. Add environment variables in the Environment section
+7. Deploy automatically on push to main branch
+
 ### Docker
 
 ```dockerfile

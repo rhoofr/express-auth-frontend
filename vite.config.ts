@@ -11,14 +11,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'https://express-auth-rkti.onrender.com',
-        changeOrigin: true,
-        secure: true,
-        cookieDomainRewrite: 'localhost',
-      },
-    },
-  },
+  // REMOVE OR COMMENT OUT PROXY IN PRODUCTION
+  // Proxy is only needed for local development
+  // server: {
+  //   proxy: {
+  //     '/api': {
+  //       target: 'https://express-auth-rkti.onrender.com',
+  //       changeOrigin: true,
+  //       secure: true,
+  //       cookieDomainRewrite: 'localhost',
+  //     },
+  //   },
+  // },
 });

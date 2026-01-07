@@ -3,7 +3,6 @@
  * Reusable data table component using TanStack Table and shadcn/ui.
  * Supports sorting, filtering, and pagination.
  */
-'use no memo';
 
 import {
   type ColumnDef,
