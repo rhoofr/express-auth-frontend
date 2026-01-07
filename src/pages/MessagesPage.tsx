@@ -11,6 +11,7 @@ import { Plus, Loader2 } from 'lucide-react';
 import { SearchBar } from '@/components/SearchBar';
 import { DataTable } from '@/components/DataTable';
 import { createMessageColumns } from './MessagesPage.columns';
+import type { Message } from '@/types/api';
 
 export default function MessagesPage() {
   const navigate = useNavigate();
