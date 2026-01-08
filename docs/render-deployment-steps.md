@@ -426,12 +426,172 @@ When you visit `https://your-app.onrender.com/login`:
 
 **The Solution:**
 
-Create a `_redirects` file in your `public` directory:
+Configure redirects and headers directly in the Render Dashboard.
 
-```plaintext
-// filepath: public/_redirects
-/*    [index.html](http://_vscodecontentref_/0)   200
+#### Configure Redirects/Rewrites
+
+1. **Go to Render Dashboard** → Your static site
+2. **Click "Redirects/Rewrites"** in the left sidebar
+3. **Click "Add Rule"**
+4. **Configure the rewrite rule:**
+   ```
+   Type: Rewrite
+   Source: /*
+   Destination: /index.html
+   ```
+5. **Click "Save"**
+
+**What This Does:**
+
+- Catches all route requests (`/*`)
+- Serves `index.html` for every route
+- Returns 200 status (success)
+- React Router then takes over and displays the correct component
+
+#### Configure Custom Headers (Optional but Recommended)
+
+While in the Render Dashboard, also add security and performance headers:
+
+1. **Click "Headers"** in the left sidebar
+2. **Add the following header rules:**
+
+**Security Headers:**
+
 ```
+Path: /*
+Name: X-Frame-Options
+Value: DENY
+
+Path: /*
+Name: X-Content-Type-Options
+Value: nosniff
+
+Path: /*
+Name: Referrer-Policy
+Value: strict-origin-when-cross-origin
+```
+
+**Performance Headers (Cache Control):**
+
+```
+Path: /assets/*
+Name: Cache-Control
+Value: public, max-age=31536000, immutable
+
+Path: /*.html
+Name: Cache-Control
+Value: no-cache, no-store, must-revalidate
+```
+
+3. **Click "Save"** after adding each header
+
+#### Verify After Deployment
+
+1. **Test direct route access:**
+
+   ```bash
+   curl -I https://your-app.onrender.com/login
+
+   # Expected response:
+   # HTTP/2 200
+   # content-type: text/html
+   # x-frame-options: DENY
+   # x-content-type-options: nosniff
+   ```
+
+2. **In browser:**
+   - Navigate to `https://your-app.onrender.com/login` directly
+   - Refresh any page in your app
+   - All routes should work ✅
+
+**Important Notes:**
+
+- ⚠️ Configure these settings **BEFORE** first deployment or clear cache and redeploy after adding
+- ⚠️ Changes to Redirects/Rewrites take effect immediately
+- ⚠️ No code changes or rebuilds required
+- ✅ This is Render's official recommendation for SPAs
+- ✅ Works with all client-side routing libraries (React Router, Vue Router, etc.)
+
+### Step 6: Configure Backend CORS and Cookies
+
+**CRITICAL:** This step is required for your backend to work with the deployed frontend.
+
+Without this configuration, your frontend will not be able to communicate with the backend due to CORS and cookie issues.
+
+#### Update Backend Environment Variables
+
+1. **Go to Render Dashboard** → Your backend service
+2. **Click "Environment"** in the left sidebar
+3. **Update the following variables:**
+
+   ```env
+   FRONTEND_URL=https://express-auth-frontend.onrender.com
+   CORS_ORIGIN=https://express-auth-frontend.onrender.com
+   ```
+
+   **If supporting multiple origins:**
+
+   ```env
+   CORS_ORIGIN=https://express-auth-frontend.onrender.com,http://localhost:5173
+   ```
+
+4. **Ensure Cookie Settings Are Correct**
+
+   ```env
+   COOKIE_DOMAIN=.onrender.com
+   COOKIE_SAME_SITE=none
+   COOKIE_SECURE=true
+   CORS_CREDENTIALS=true
+   ```
+
+5. **Save Changes**
+
+   - Click "Save Changes"
+   - Wait for the backend to redeploy (1-2 minutes)
+
+#### Verify Backend Configuration
+
+1. **Test CORS Configuration**
+
+   From your frontend (browser console):
+
+   ```javascript
+   fetch('https://express-auth-rkti.onrender.com/api/v1/auth/login', {
+     method: 'POST',
+     credentials: 'include',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({
+       email: 'test@example.com',
+       password: 'TestPass123!',
+     }),
+   })
+     .then((response) => {
+       console.log('CORS test response:', response);
+       return response.json();
+     })
+     .then((data) => console.log('Data:', data))
+     .catch((error) => console.error('Error:', error));
+   ```
+
+   **Expected:**
+
+   - No CORS errors in console
+   - Response contains user data
+
+2. **Verify Cookie Settings**
+
+   After logging in, check cookies:
+
+   ```javascript
+   document.cookie.split(';').forEach((cookie) => {
+     console.log('Cookie:', cookie);
+   });
+   ```
+
+   **Expected:**
+
+   - `accessToken` and `refreshToken` cookies are visible
+   - Cookies have correct attributes (httpOnly, secure, sameSite)
 
 ---
 
@@ -1437,229 +1597,146 @@ Build exceeded 15 minute limit
 
 **Symptoms:**
 
-- Direct navigation to `/login` works
-- Refresh browser on `/profile` → 404 error
-- Router works internally but not on direct access
+- Direct navigation to `/login` from browser works initially
+- Refresh browser on any route (e.g., `/profile`, `/messages`) → 404 error
+- Sharing direct links to routes → 404 error
+- Router works for internal navigation but not for direct URL access
 
 **Root Cause:**
 
-- Static site doesn't handle client-side routing
-- Server trying to find `/profile/index.html` (doesn't exist)
+- Static hosting server trying to find physical files at each route path
+- Server looks for `/profile/index.html` which doesn't exist
+- React Router handles routing client-side, but server doesn't know this
 
 **Solution:**
 
-Create `public/_redirects` file:
+Configure SPA routing support in Render Dashboard (see [Step 5: Configure SPA Routing Support](#step-5-configure-spa-routing-support) for detailed instructions).
 
-```
-# filepath: public/_redirects
-/*    /index.html   200
-```
+**Quick Fix:**
 
-**What this does:**
+1. **Go to Render Dashboard** → Your static site
+2. **Click "Redirects/Rewrites"** in the left sidebar
+3. **Click "Add Rule"**
+4. **Configure:**
+   ```
+   Type: Rewrite
+   Source: /*
+   Destination: /index.html
+   ```
+5. **Click "Save"**
+6. **Test immediately** - No rebuild required
 
-- All routes serve `index.html`
-- React Router handles routing client-side
-- No more 404 errors on refresh
-
-**After adding file:**
+**Verify Fix:**
 
 ```bash
-# Commit and push
-git add public/_redirects
-git commit -m "fix: add SPA routing support"
-git push
+# Test direct route access
+curl -I https://your-app.onrender.com/login
 
-# Or trigger manual deploy on Render dashboard
+# Expected response:
+# HTTP/2 200
+# content-type: text/html
 ```
 
----
+**In Browser:**
 
-### Issue 7: Slow First Load
+1. Navigate to `https://your-app.onrender.com/login` directly
+2. Refresh the page
+3. Should show login page, not 404 ✅
 
-**Symptoms:**
+**What This Does:**
 
-- Initial page load takes 5-10 seconds
-- Subsequent navigation fast
-- Users complain about performance
+- Catches all route requests (`/*`)
+- Serves `index.html` for every route
+- Returns 200 status code (not 404)
+- React Router takes over and displays the correct component
 
-**Root Cause:**
+**Important Notes:**
 
-- Render free tier sleeps after 15 minutes of inactivity
-- Backend needs "warming up"
-- Large bundle sizes
+- ⚠️ Changes to Redirects/Rewrites take effect **immediately**
+- ⚠️ No code changes or rebuilds required
+- ⚠️ If you still see 404s, clear browser cache (Ctrl+Shift+Delete)
+- ✅ This is Render's official recommended approach for SPAs
+- ✅ Works with all client-side routing libraries
 
-**Solutions:**
+**Alternative Check - Headers:**
 
-**1. Keep Backend Awake (Free Tier)**
+While configuring redirects, also verify security headers are set (optional but recommended):
 
-Create a simple cron job or use a service like:
-
-- UptimeRobot (free, pings every 5 minutes)
-- Better Uptime (free tier available)
-
-Configure:
-
-```
-URL to monitor: https://express-auth-rkti.onrender.com/health
-Interval: 5 minutes
-```
-
-**2. Optimize Frontend Bundle**
-
-```bash
-# Analyze bundle size
-npm run build
-
-# Check dist/assets/*.js sizes
-# Large files (> 500KB) need optimization
-```
-
-**Code splitting:**
-
-```typescript
-// Lazy load routes
-import { lazy, Suspense } from 'react';
-
-const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
-const MessagesPage = lazy(() => import('@/pages/MessagesPage'));
-
-// In App.tsx
-<Route
-  path='/profile'
-  element={
-    <Suspense fallback={<div>Loading...</div>}>
-      <ProfilePage />
-    </Suspense>
-  }
-/>;
-```
-
-**3. Upgrade to Paid Plan**
-
-- No sleep on inactivity
-- Faster build times
-- Better performance
-- Custom domains included
-
----
-
-### Issue 8: Environment Variables Not Working
-
-**Symptoms:**
-
-- `import.meta.env.VITE_API_BASE_URL` is `undefined`
-- App trying to connect to `localhost`
-- "Network error" in production
-
-**Root Cause:**
-
-- Variables not set in Render dashboard
-- Variables don't start with `VITE_`
-- Build happened before variables were set
-
-**Solution:**
-
-1. **Verify Variable Names:**
+1. **Click "Headers"** in the left sidebar
+2. **Verify these headers exist:**
 
    ```
-   ❌ Wrong: API_BASE_URL
-   ✅ Right: VITE_API_BASE_URL
+   Path: /*
+   Name: X-Frame-Options
+   Value: DENY
 
-   # MUST start with VITE_
+   Path: /*
+   Name: X-Content-Type-Options
+   Value: nosniff
    ```
 
-2. **Check Render Dashboard:**
+If missing, add them for better security.
 
-   - Go to Static Site → Environment
-   - Verify `VITE_API_BASE_URL` is listed
-   - Value should be: `https://express-auth-rkti.onrender.com`
+**Why Previous Approaches Don't Work:**
 
-3. **Trigger Rebuild:**
+- ❌ `_redirects` file: Works on some platforms (Netlify) but not reliably on Render static sites
+- ❌ `render.yaml`: Only applies when creating service via "Blueprint", not regular static sites
+- ❌ Custom 404 page: Hacky workaround with poor SEO and user experience
+- ✅ **Dashboard Redirects/Rewrites**: Official Render solution, works immediately
 
-   - Environment variables are **build-time**
-   - Changing them requires rebuild
-   - Click "Manual Deploy" → "Clear build cache & deploy"
+**Debugging Steps if Still Not Working:**
 
-4. **Verify After Build:**
+1. **Clear Browser Cache:**
 
-   ```javascript
-   // In browser console on deployed site
-   console.log(import.meta.env.VITE_API_BASE_URL);
-   // Should show: https://express-auth-rkti.onrender.com
+   ```
+   Ctrl+Shift+Delete → Clear "Cached images and files"
+   Close and reopen browser
    ```
 
-5. **Check Constants File:**
+2. **Check Redirect Rule Syntax:**
 
-   ```typescript
-   // src/lib/constants.ts
-   export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5004';
-
-   // If VITE_API_BASE_URL undefined, falls back to localhost (wrong in production)
+   ```
+   Source: /*          (must include asterisk)
+   Destination: /index.html   (must start with /)
+   Type: Rewrite       (not Redirect)
    ```
 
----
+3. **Verify in Network Tab:**
 
-### Issue 9: Styles Not Loading / Broken Layout
+   - Navigate to failing route
+   - Open DevTools → Network tab
+   - Refresh page
+   - Look at request for the route
+   - Should return `index.html` content with 200 status
 
-**Symptoms:**
+4. **Test in Incognito Mode:**
 
-- Page loads but styles missing
-- Layout broken
-- Console shows 404 for CSS files
+   - Rules out caching issues
+   - Should work immediately
 
-**Root Cause:**
+5. **Check Render Service Logs:**
+   - Dashboard → Your static site → Logs
+   - Look for 404 errors
+   - Should see 200 responses after fix
 
-- Base path misconfigured
-- CSS not included in build
-- Tailwind not processing
+**Expected Behavior After Fix:**
 
-**Solution:**
+| Action                        | Before Fix       | After Fix              |
+| ----------------------------- | ---------------- | ---------------------- |
+| Navigate to `/login` directly | ❌ 404 Not Found | ✅ Shows login page    |
+| Refresh on `/profile`         | ❌ 404 Not Found | ✅ Shows profile page  |
+| Share link to `/messages`     | ❌ 404 Not Found | ✅ Shows messages page |
+| Back button navigation        | ✅ Works         | ✅ Works               |
+| Internal routing              | ✅ Works         | ✅ Works               |
 
-1. **Verify Build Output:**
+**SEO Consideration:**
 
-   ```bash
-   # After build locally
-   ls dist/assets/
+Using a rewrite (200 status) instead of redirect (301/302) is correct for SPAs:
 
-   # Should see:
-   # index-abc123.js
-   # index-def456.css
-   ```
-
-2. **Check Base Path:**
-
-   ```typescript
-   // vite.config.ts
-   export default defineConfig({
-     base: '/', // Should be '/' for root deployment
-   });
-   ```
-
-3. **Verify Tailwind Import:**
-
-   ```css
-   /* src/index.css */
-   @import 'tailwindcss';
-
-   /* Or */
-   @tailwind base;
-   @tailwind components;
-   @tailwind utilities;
-   ```
-
-4. **Check Import in Main:**
-
-   ```typescript
-   // src/main.tsx
-   import './index.css'; // Must be imported
-   ```
-
-5. **Rebuild and Deploy:**
-   ```bash
-   npm run build
-   # Check dist/ locally first
-   # Then commit and push
-   ```
+- ✅ Search engines index the page normally
+- ✅ No redirect chain penalty
+- ✅ Proper status codes for each route
+- ✅ React Router handles meta tags per route
 
 ---
 
