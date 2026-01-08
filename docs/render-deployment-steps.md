@@ -405,28 +405,33 @@ Watch the build logs in real-time:
    - Backend will automatically redeploy (takes 1-2 minutes)
    - Wait for "Live" status before testing frontend
 
-### Step 5: Configure Custom Headers (Optional but Recommended)
+### Step 5: Configure SPA Routing Support
 
-Create `public/_headers` file for additional security:
+**CRITICAL:** This step is required for client-side routing to work properly.
 
+Without this configuration, you'll get 404 errors when:
+
+- Navigating directly to any route (e.g., `https://your-app.onrender.com/login`)
+- Refreshing the page on any route except home
+- Sharing deep links to your app
+
+**Why This Happens:**
+
+When you visit `https://your-app.onrender.com/login`:
+
+1. Browser requests `/login` from Render's static server
+2. Server looks for a file at `public/login/index.html`
+3. That file doesn't exist (routing is handled by React Router)
+4. Server returns 404 error
+
+**The Solution:**
+
+Create a `_redirects` file in your `public` directory:
+
+```plaintext
+// filepath: public/_redirects
+/*    [index.html](http://_vscodecontentref_/0)   200
 ```
-# filepath: public/_headers
-/*
-  X-Frame-Options: DENY
-  X-Content-Type-Options: nosniff
-  Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: geolocation=(), microphone=(), camera=()
-
-# Cache static assets
-/assets/*
-  Cache-Control: public, max-age=31536000, immutable
-
-# Don't cache HTML
-/*.html
-  Cache-Control: no-cache, no-store, must-revalidate
-```
-
-**Important:** Add this file BEFORE deploying or trigger a rebuild after adding.
 
 ---
 
