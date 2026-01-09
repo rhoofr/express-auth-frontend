@@ -30,6 +30,10 @@ export function useMessages() {
         url: BASE,
         method: 'GET',
       }),
+    // Add retry logic - the first request might fail if cookies aren't ready
+    // The interceptor will handle token refresh automatically
+    retry: 1,
+    retryDelay: 500,
   });
   useQueryErrorToast(query.error);
   return query;

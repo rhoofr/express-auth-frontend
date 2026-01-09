@@ -51,6 +51,26 @@ export async function request<T>(config: AxiosRequestConfig): Promise<T> {
 }
 
 /**
+ * Request interceptor to log outgoing requests (for debugging).
+ * Removed in production builds.
+ */
+if (import.meta.env.DEV) {
+  api.interceptors.request.use(
+    (config) => {
+      const isPublic = PUBLIC_ENDPOINTS.some((endpoint) => config.url?.includes(endpoint));
+      if (!isPublic) {
+        console.log('[API Request]', config.method?.toUpperCase(), config.url, {
+          withCredentials: config.withCredentials,
+          hasCookies: document.cookie.length > 0,
+        });
+      }
+      return config;
+    },
+    (error) => Promise.reject(error)
+  );
+}
+
+/**
  * Response interceptor for automatic token refresh.
  *
  * NOTE: You may see 401 errors logged in the browser console when tokens expire.
@@ -112,10 +132,15 @@ api.interceptors.response.use(
       });
     }
 
-    // Only log non-401 errors (401s are handled silently by token refresh)
+    // Only log non-401 errors in development (401s are handled silently by token refresh)
     const is401 = error.response?.status === 401;
-    if (!is401) {
-      console.error('[API Error]', error instanceof Error ? error.message : String(error));
+    if (import.meta.env.DEV && !is401) {
+      console.error('[API Error]', {
+        status: error.response?.status,
+        url: originalRequest?.url,
+        method: originalRequest?.method,
+        message: error.response?.data?.error?.message || error.message,
+      });
     }
 
     // For all other errors, reject as normal

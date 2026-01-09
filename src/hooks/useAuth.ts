@@ -176,6 +176,10 @@ export function useSessions() {
         url: `${BASE}/sessions`,
         method: 'GET',
       }),
+    // Add retry logic - the first request might fail if cookies aren't ready
+    // The interceptor will handle token refresh automatically
+    retry: 1,
+    retryDelay: 500,
   });
   useQueryErrorToast(query.error);
   return query;
@@ -360,6 +364,9 @@ export function useListUsers() {
         url: `${BASE}/users`,
         method: 'GET',
       }),
+    // Add retry logic - the first request might fail if cookies aren't ready
+    retry: 1,
+    retryDelay: 500,
   });
   useQueryErrorToast(query.error);
   return query;
